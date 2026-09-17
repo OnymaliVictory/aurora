@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aurora — Create Your Shop</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="auth.html" class="nav-link">Sign In</a>
+    <a href="buyer.html" class="btn-secondary">Explore Shops</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+  <button class="hamburger" id="hamburger-btn" onclick="toggleMobileNav()"><span></span><span></span><span></span></button>
+</nav>
+
+<div class="wizard-page">
+  <div class="wizard-header">
+    <div class="wizard-progress">
+      <div class="prog-dot active" id="dot-0"></div>
+      <div class="prog-dot" id="dot-1"></div>
+      <div class="prog-dot" id="dot-2"></div>
+      <div class="prog-dot" id="dot-3"></div>
+    </div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-bottom:6px">STEP <span id="step-counter">1</span> OF 4</div>
+    <div class="auth-logo-text" style="font-size:28px">Create Your Shop</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-top:6px">You're 4 quick steps away from going live ✦</div>
+  </div>
+
+  <!-- STEP 1: BASICS -->
+  <div class="wizard-step active" id="step-1">
+    <div class="wizard-step-card">
+      <div class="step-title">Shop Basics</div>
+      <div class="step-subtitle">Tell us about your shop. This is what buyers will see first.</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group"><label class="form-label">Shop Name</label><input class="form-input" id="shop-name" placeholder="e.g. KickZone Store" required></div>
+        <div class="form-group"><label class="form-label">Category</label>
+          <select class="form-select" id="shop-cat">
+            <option value="">Choose a category...</option>
+            <option>👟 Footwear</option><option>👗 Fashion &amp; Clothing</option>
+            <option>💄 Beauty &amp; Skincare</option><option>📱 Electronics</option>
+            <option>🍔 Food &amp; Drinks</option><option>🏠 Home &amp; Living</option>
+            <option>📚 Books &amp; Education</option><option>⚽ Sports &amp; Fitness</option>
+            <option>🎨 Art &amp; Crafts</option><option>🌿 Organic &amp; Natural</option>
+            <option>💍 Jewelry &amp; Accessories</option><option>🐾 Pets</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Shop Description</label><textarea class="form-input" id="shop-desc" rows="4" placeholder="Tell buyers what makes your shop special..."></textarea></div>
+        <div class="form-group"><label class="form-label">Shop Colour Theme</label>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">Pick a brand colour for your shop</div>
+          <div class="color-swatches">
+            <div class="swatch selected" style="background:#00ffb3" onclick="selectColor(this,'#00ffb3')"></div>
+            <div class="swatch" style="background:#00d4ff" onclick="selectColor(this,'#00d4ff')"></div>
+            <div class="swatch" style="background:#a855f7" onclick="selectColor(this,'#a855f7')"></div>
+            <div class="swatch" style="background:#f472b6" onclick="selectColor(this,'#f472b6')"></div>
+            <div class="swatch" style="background:#f97316" onclick="selectColor(this,'#f97316')"></div>
+            <div class="swatch" style="background:#fbbf24" onclick="selectColor(this,'#fbbf24')"></div>
+            <div class="swatch" style="background:#ef4444" onclick="selectColor(this,'#ef4444')"></div>
+            <div class="swatch" style="background:#38bdf8" onclick="selectColor(this,'#38bdf8')"></div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button class="btn-full" onclick="nextStep(1)">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: LOCATION & HOURS -->
+  <div class="wizard-step" id="step-2">
+    <div class="wizard-step-card">
+      <div class="step-title">Location &amp; Hours</div>
+      <div class="step-subtitle">Help nearby buyers find and visit you.</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">City</label><input class="form-input" id="shop-city" placeholder="e.g. Lagos"></div>
+          <div class="form-group"><label class="form-label">Area / Neighbourhood</label><input class="form-input" id="shop-area" placeholder="e.g. Lekki Phase 1"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Street Address (optional)</label><input class="form-input" id="shop-address" placeholder="For in-person pickup"></div>
+        <div class="form-group">
+          <button class="btn-ghost" style="font-size:13px;padding:11px 18px;border-radius:12px;width:100%" onclick="detectShopLocation()">📍 Use My Current Location</button>
+        </div>
+        <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" id="shop-phone" type="tel" placeholder="+234 800 000 0000"></div>
+        <div class="form-group">
+          <label class="form-label">Opening Days</label>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">Select all days you're open</div>
+          <div class="hours-grid" id="hours-grid">
+            <div class="hours-day active" data-day="Mon" onclick="this.classList.toggle('active')">Mon</div>
+            <div class="hours-day active" data-day="Tue" onclick="this.classList.toggle('active')">Tue</div>
+            <div class="hours-day active" data-day="Wed" onclick="this.classList.toggle('active')">Wed</div>
+            <div class="hours-day active" data-day="Thu" onclick="this.classList.toggle('active')">Thu</div>
+            <div class="hours-day active" data-day="Fri" onclick="this.classList.toggle('active')">Fri</div>
+            <div class="hours-day active" data-day="Sat" onclick="this.classList.toggle('active')">Sat</div>
+            <div class="hours-day" data-day="Sun" onclick="this.classList.toggle('active')">Sun</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Opening Time</label><input class="form-input" id="shop-open-time" type="time" value="09:00"></div>
+          <div class="form-group"><label class="form-label">Closing Time</label><input class="form-input" id="shop-close-time" type="time" value="21:00"></div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button class="btn-secondary" onclick="prevStep(2)">← Back</button>
+        <button class="btn-full" onclick="nextStep(2)">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: BRANDING -->
+  <div class="wizard-step" id="step-3">
+    <div class="wizard-step-card">
+      <div class="step-title">Branding &amp; Media</div>
+      <div class="step-subtitle">Add your shop logo and cover image to stand out.</div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="form-group">
+          <label class="form-label">Shop Logo</label>
+          <div class="upload-area" onclick="showToast('📷 Image upload available in full app!')">
+            <div class="upload-emoji">🖼️</div>
+            <div class="upload-text">Click to upload your shop logo<br><span style="font-size:11px;color:var(--text-dim)">PNG, JPG · Max 5MB · Recommended 512×512px</span></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover / Banner Image</label>
+          <div class="upload-area" onclick="showToast('📷 Image upload available in full app!')">
+            <div class="upload-emoji">🎨</div>
+            <div class="upload-text">Click to upload a cover banner<br><span style="font-size:11px;color:var(--text-dim)">PNG, JPG · Max 10MB · Recommended 1200×400px</span></div>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Social Media / Links (optional)</label><input class="form-input" placeholder="Instagram: @yourshop"></div>
+        <div class="form-group"><label class="form-label">WhatsApp Business (optional)</label><input class="form-input" type="tel" placeholder="+234 800 000 0000"></div>
+        <div class="form-group"><label class="form-label">Delivery Options</label>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="delivery-home" checked style="accent-color:var(--aurora-green)"> Home Delivery</label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="delivery-pickup" style="accent-color:var(--aurora-green)"> Store Pickup</label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="delivery-pod" style="accent-color:var(--aurora-green)"> Pay on Delivery</label>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button class="btn-secondary" onclick="prevStep(3)">← Back</button>
+        <button class="btn-full" onclick="nextStep(3)">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: SUCCESS -->
+  <div class="wizard-step" id="step-4">
+    <div class="wizard-step-card" style="text-align:center">
+      <div class="success-check">✓</div>
+      <div class="step-title">Your Shop is Live! 🎉</div>
+      <div class="step-subtitle" style="margin-bottom:24px">Welcome to Aurora! Your shop is now visible to buyers near you on the map.</div>
+      <div class="glass-card" style="padding:18px;margin-bottom:22px;text-align:left">
+        <div style="font-family:'Orbitron',sans-serif;font-size:9.5px;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px">YOUR SHOP LINK</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="font-size:13.5px;color:var(--aurora-teal);flex:1;font-family:'Orbitron',sans-serif;font-size:12px" id="shop-link-display">aurora.ng/shop/your-shop</div>
+          <button class="btn-secondary" style="font-size:12px;padding:7px 14px" onclick="copyFinalLink()">Copy</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <a href="seller.html" class="btn-full" style="display:block;text-align:center">Go to Seller Dashboard →</a>
+        <a href="#" id="preview-shop-link" class="btn-ghost" style="display:block;text-align:center;padding:12px;border-radius:12px">Preview My Shop</a>
+      </div>
+      <p style="font-size:12px;color:var(--text-dim);margin-top:18px">Add your first products from the Seller Dashboard to start receiving orders!</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+let currentStep=1, shopColor='#00ffb3', createdShop=null;
+
+(async () => {
+  const user = await AuroraAuth.requireAuth();
+  if (!user) return;
+  try {
+    const { shop } = await AuroraAPI.get('/shops/mine');
+    if (shop) {
+      showToast('You already have a shop — taking you to your dashboard');
+      setTimeout(() => window.location.href = 'seller.html', 900);
+    }
+  } catch {}
+})();
+
+function nextStep(from){
+  if(from===1){
+    const name=document.getElementById('shop-name').value;
+    const cat=document.getElementById('shop-cat').value;
+    if(!name||!cat){showToast('Please fill in shop name and category','error');return;}
+  }
+  if(from===3){
+    submitShop();
+    return;
+  }
+  goToStep(from+1);
+}
+function prevStep(from){ goToStep(from-1); }
+function goToStep(n){
+  document.querySelectorAll('.wizard-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('step-'+n).classList.add('active');
+  document.querySelectorAll('.prog-dot').forEach((d,i)=>{
+    d.classList.remove('active','done');
+    if(i===n-1) d.classList.add('active');
+    else if(i<n-1) d.classList.add('done');
+  });
+  document.getElementById('step-counter').textContent=Math.min(n,4);
+  currentStep=n;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function selectColor(el,color){
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected'); shopColor=color;
+}
+function detectShopLocation(){
+  if(navigator.geolocation){
+    showToast('📍 Getting location...');
+    navigator.geolocation.getCurrentPosition(pos=>{
+      showToast('✓ Location found — please confirm your city & area below');
+    },()=>showToast('Could not get location','error'));
+  } else {
+    showToast('Location is not available on this device','error');
+  }
+}
+async function submitShop(){
+  const btn = document.querySelector('#step-3 .btn-full');
+  const openDays = Array.from(document.querySelectorAll('#hours-grid .hours-day.active')).map(d => d.dataset.day);
+  const payload = {
+    name: document.getElementById('shop-name').value,
+    category: document.getElementById('shop-cat').value,
+    description: document.getElementById('shop-desc').value,
+    color: shopColor,
+    city: document.getElementById('shop-city').value,
+    area: document.getElementById('shop-area').value,
+    address: document.getElementById('shop-address').value,
+    phone: document.getElementById('shop-phone').value,
+    openDays,
+    openTime: document.getElementById('shop-open-time').value,
+    closeTime: document.getElementById('shop-close-time').value,
+    deliveryHome: document.getElementById('delivery-home').checked,
+    deliveryPickup: document.getElementById('delivery-pickup').checked,
+    payOnDelivery: document.getElementById('delivery-pod').checked,
+  };
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating your shop…'; }
+  try {
+    const { shop } = await AuroraAPI.post('/shops', payload);
+    createdShop = shop;
+    document.getElementById('shop-link-display').textContent = 'aurora.ng/shop/' + shop.slug;
+    document.getElementById('preview-shop-link').href = 'shop.html?slug=' + encodeURIComponent(shop.slug);
+    goToStep(4);
+    showToast('🎉 Your shop is now live on Aurora!');
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue →'; }
+  }
+}
+function copyFinalLink(){
+  const link=document.getElementById('shop-link-display').textContent;
+  navigator.clipboard?.writeText('https://'+link).catch(()=>{});
+  showToast('🔗 Shop link copied!');
+}
+</script>
+</body></html>

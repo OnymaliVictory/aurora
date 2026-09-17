@@ -1,0 +1,6 @@
+node_modules/
+supabase-backend/node_modules/
+supabase-backend/.env
+.env
+.vercel
+.DS_Store

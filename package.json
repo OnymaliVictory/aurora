@@ -1,0 +1,12 @@
+{
+  "name": "aurora-marketplace",
+  "version": "1.0.0",
+  "description": "Aurora — the luminous marketplace (Vercel deployment entry)",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.2.0"
+  }
+}

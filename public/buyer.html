@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aurora — Discover Shops</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="aurora-canvas"></canvas>
+
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <button class="btn-secondary" onclick="openCart()">🛒 Cart <span class="cart-count-badge" style="background:rgba(0,255,179,.15);color:var(--aurora-green);padding:1px 7px;border-radius:50px;font-size:11px;margin-left:4px">0</span></button>
+    <a href="auth.html" class="btn-primary" id="nav-account-link">Sign In</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+  <button class="hamburger" id="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+</nav>
+
+<div style="padding-top:68px" class="rel">
+<div class="app-layout">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-text">✦ AURORA</div><div class="sidebar-logo-sub">Buyer Dashboard</div></div>
+    <div class="sidebar-section">Discover</div>
+    <div class="sidebar-item active" id="nav-nearby" onclick="showView('nearby',this)"><span class="s-icon">🌐</span>Nearby Shops</div>
+    <div class="sidebar-item" id="nav-browse" onclick="showView('browse',this)"><span class="s-icon">🔍</span>Browse &amp; Search</div>
+    <div class="sidebar-item" id="nav-trending" onclick="showView('trending',this)"><span class="s-icon">🔥</span>Trending</div>
+    <div class="sidebar-item" id="nav-new" onclick="showView('new',this)"><span class="s-icon">✨</span>New Arrivals</div>
+    <div class="sidebar-section">My Account</div>
+    <div class="sidebar-item" id="nav-orders" onclick="showView('orders',this)"><span class="s-icon">📦</span>My Orders</div>
+    <div class="sidebar-item" onclick="openCart()"><span class="s-icon">🛒</span>Cart<span class="sidebar-badge cart-count-badge">0</span></div>
+    <div class="sidebar-item" id="nav-wishlist" onclick="showView('wishlist',this)"><span class="s-icon">❤️</span>Wishlist</div>
+    <div class="sidebar-item" id="nav-messages" onclick="showView('messages',this)"><span class="s-icon">💬</span>Messages</div>
+    <div class="sidebar-section">More</div>
+    <div class="sidebar-item" onclick="window.location.href='create-shop.html'"><span class="s-icon">🏪</span>Open a Shop</div>
+    <div class="sidebar-item" onclick="showToast('Settings coming soon!')"><span class="s-icon">⚙️</span>Settings</div>
+    <div class="sidebar-item" id="nav-logout" style="display:none" onclick="AuroraAuth.logout()"><span class="s-icon">🚪</span>Log Out</div>
+    <div class="user-profile-mini" id="user-profile-mini" style="cursor:pointer" onclick="location.href='auth.html'">
+      <div class="avatar" id="profile-avatar">?</div>
+      <div><div class="u-name" id="profile-name">Guest</div><div class="u-role" id="profile-role">Tap to sign in</div></div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+
+    <!-- NEARBY / ATOM VIEW -->
+    <div id="view-nearby">
+      <div class="atom-header">
+        <h2>Shops Near You</h2>
+        <div class="atom-location" onclick="detectLocation()">📍 <span id="location-label">Set your location</span> <span style="font-size:10px;opacity:.6">(tap to update)</span></div>
+      </div>
+      <div class="atom-scene" id="atom-scene">
+        <div class="orbit-ring orbit-ring-1"></div>
+        <div class="orbit-ring orbit-ring-2"></div>
+        <div class="orbit-ring orbit-ring-3"></div>
+        <div class="atom-core" onclick="showView('browse', document.getElementById('nav-browse'))" style="cursor:pointer">
+          <div class="atom-core-text">AURORA</div>
+          <div class="atom-core-sub">TAP TO BROWSE</div>
+        </div>
+      </div>
+      <div class="nearby-wrap">
+        <div class="nearby-title">All Shops</div>
+        <div class="shops-grid" id="nearby-grid"><div style="padding:20px;color:var(--text-dim);font-size:13px">Loading shops…</div></div>
+      </div>
+    </div>
+
+    <!-- BROWSE / SEARCH VIEW -->
+    <div id="view-browse" style="display:none">
+      <h2 class="page-title" style="margin-bottom:20px">Browse Shops</h2>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+        <div class="search-bar-wrap" style="flex:1;min-width:220px">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" id="search-input" placeholder="Search shops, categories..." oninput="doSearch(this.value)">
+        </div>
+        <select class="form-select" style="width:160px" onchange="filterBySort(this.value)">
+          <option value="">Sort: A–Z</option>
+          <option value="rating">Sort: Top Rated</option>
+          <option value="new">Sort: Newest</option>
+          <option value="open">Sort: Open Now</option>
+        </select>
+      </div>
+      <div class="search-filters" id="category-filters">
+        <span class="filter-chip active" onclick="filterCat('all',this)">All</span>
+        <span class="filter-chip" onclick="filterCat('Food',this)">🍔 Food</span>
+        <span class="filter-chip" onclick="filterCat('Fashion',this)">👗 Fashion</span>
+        <span class="filter-chip" onclick="filterCat('Electronics',this)">📱 Electronics</span>
+        <span class="filter-chip" onclick="filterCat('Beauty',this)">💄 Beauty</span>
+        <span class="filter-chip" onclick="filterCat('Home',this)">🏠 Home</span>
+        <span class="filter-chip" onclick="filterCat('Sports',this)">⚽ Sports</span>
+        <span class="filter-chip" onclick="filterCat('Books',this)">📚 Books</span>
+      </div>
+      <div class="shops-grid" id="browse-grid"></div>
+      <div id="no-results" style="display:none;text-align:center;padding:48px 0;color:var(--text-dim)">
+        <div style="font-size:36px;margin-bottom:12px">🔭</div>
+        <p style="font-size:14px">No shops found. Try a different search.</p>
+      </div>
+    </div>
+
+    <!-- TRENDING -->
+    <div id="view-trending" style="display:none">
+      <h2 class="page-title">🔥 Trending Now</h2>
+      <p class="page-subtitle">Popular shops on Aurora</p>
+      <div class="shops-grid" id="trending-grid"></div>
+    </div>
+
+    <!-- NEW ARRIVALS -->
+    <div id="view-new" style="display:none">
+      <h2 class="page-title">✨ New Arrivals</h2>
+      <p class="page-subtitle">Shops that just joined Aurora</p>
+      <div class="shops-grid" id="new-grid"></div>
+    </div>
+
+    <!-- ORDERS -->
+    <div id="view-orders" style="display:none">
+      <h2 class="page-title">My Orders</h2>
+      <p class="page-subtitle">Track and manage your purchases</p>
+      <div style="display:flex;flex-direction:column;gap:13px" id="my-orders-list">
+        <div class="glass-card" style="padding:24px;text-align:center;color:var(--text-dim)">Sign in to see your orders.</div>
+      </div>
+    </div>
+
+    <!-- WISHLIST -->
+    <div id="view-wishlist" style="display:none">
+      <h2 class="page-title">❤️ Wishlist</h2>
+      <p class="page-subtitle">Items you've saved for later</p>
+      <div class="product-listing-grid" id="wishlist-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:16px"></div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div id="view-messages" style="display:none">
+      <h2 class="page-title" style="margin-bottom:20px">Messages</h2>
+      <div class="msg-layout">
+        <div class="msg-list">
+          <div class="msg-list-header">Conversations</div>
+          <div class="msg-list-items" id="buyer-msg-list"><div style="padding:16px;color:var(--text-dim);font-size:13px">Sign in to message shops.</div></div>
+        </div>
+        <div class="msg-chat" id="msg-chat-panel">
+          <div class="msg-chat-header">
+            <div style="font-size:22px" id="chat-avatar">💬</div>
+            <div><div class="msg-chat-title" id="chat-name">Select a conversation</div><div class="msg-chat-sub" id="chat-sub"></div></div>
+            <div style="margin-left:auto"><a href="#" id="chat-view-shop-link" class="btn-secondary" style="font-size:12px;padding:6px 14px;display:none">View Shop</a></div>
+          </div>
+          <div class="msg-chat-messages" id="chat-messages"></div>
+          <div class="msg-chat-input">
+            <input class="msg-input" id="msg-input-field" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMsg()">
+            <button class="msg-send-btn" onclick="sendMsg()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<!-- CART DRAWER -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-header"><span class="cart-title">Your Cart</span><button class="cart-close" onclick="closeCart()">✕</button></div>
+  <div class="cart-items" id="cart-items-list"></div>
+  <div class="cart-footer">
+    <div class="cart-total"><span class="cart-total-label">Total</span><span class="cart-total-value" id="cart-total-val">₦0</span></div>
+    <a href="checkout.html" class="btn-full" style="display:block;text-align:center;text-decoration:none">Proceed to Checkout →</a>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+let SHOPS = [];
+let activeCat = 'all', searchQuery = '', activeChatShop = null;
+
+function isShopOpen(s){
+  try {
+    const days = s.openDays || [];
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const now = new Date();
+    if (days.length && !days.includes(dayNames[now.getDay()])) return false;
+    const [oh,om] = (s.openTime||'00:00').split(':').map(Number);
+    const [ch,cm] = (s.closeTime||'23:59').split(':').map(Number);
+    const mins = now.getHours()*60+now.getMinutes();
+    return mins >= oh*60+om && mins <= ch*60+cm;
+  } catch { return true; }
+}
+
+function shopCard(s){
+  const open = isShopOpen(s);
+  const rating = s.reviewCount ? s.rating.toFixed(1) : 'New';
+  return `<a href="shop.html?slug=${s.slug}" class="shop-card">
+    <div class="shop-card-icon">${s.emoji||'🏪'}</div>
+    <div class="shop-card-name">${escapeHtml(s.name)}</div>
+    <div class="shop-card-cat">${escapeHtml(s.category)}</div>
+    <div class="shop-card-meta"><span class="shop-card-dist">📍 ${escapeHtml(s.area||s.city||'Aurora')}</span><span class="shop-card-rating">★ ${rating}</span></div>
+    <div class="status-row ${open?'open':'closed'}"><div class="status-dot" style="background:${open?'var(--aurora-green)':'#555'}"></div><span style="color:${open?'var(--aurora-green)':'var(--text-dim)'}">${open?'Open Now':'Closed'}</span></div>
+  </a>`;
+}
+
+function renderGrid(id, shops){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.innerHTML = shops.length ? shops.map(shopCard).join('') : '<div style="padding:20px;color:var(--text-dim);font-size:13px">No shops here yet.</div>';
+}
+
+function doSearch(q){ searchQuery=q.toLowerCase(); applyFilters(); }
+function filterCat(cat,el){
+  activeCat=cat;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  applyFilters();
+}
+function filterBySort(v){
+  let shops=[...SHOPS];
+  if(v==='rating') shops.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  if(v==='new') shops.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  if(v==='open') { shops.sort((a,b)=>isShopOpen(b)-isShopOpen(a)); }
+  renderGrid('browse-grid',shops);
+}
+function applyFilters(){
+  let shops=SHOPS.filter(s=>{
+    const matchCat = activeCat==='all' || s.category.toLowerCase().includes(activeCat.toLowerCase());
+    const matchQ = !searchQuery || s.name.toLowerCase().includes(searchQuery) || s.category.toLowerCase().includes(searchQuery);
+    return matchCat && matchQ;
+  });
+  renderGrid('browse-grid',shops);
+  document.getElementById('no-results').style.display = shops.length?'none':'block';
+}
+
+function buildAtomNodes(){
+  const scene=document.getElementById('atom-scene');
+  if(!scene)return;
+  document.querySelectorAll('.shop-node').forEach(n=>n.remove());
+  const radii=[95,155,220], counts=[3,3,4];
+  let idx=0;
+  counts.forEach((cnt,oi)=>{
+    for(let i=0;i<cnt&&idx<SHOPS.length;i++,idx++){
+      const shop=SHOPS[idx];
+      const angle=(360/cnt)*i - 90;
+      const rad=angle*Math.PI/180;
+      const r=radii[oi];
+      const x=Math.cos(rad)*r, y=Math.sin(rad)*r;
+      const open = isShopOpen(shop);
+      const node=document.createElement('a');
+      node.href='shop.html?slug='+shop.slug;
+      node.className='shop-node';
+      node.style.transform=`translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+      node.style.animation=`nodeHover ${2.4+oi*.5}s ease-in-out ${i*.35}s infinite alternate`;
+      node.innerHTML=`
+        <div class="shop-node-inner" style="border-color:${open?shop.color:'var(--glass-border)'}">
+          <div class="shop-node-emoji">${shop.emoji||'🏪'}</div>
+          <div class="shop-node-name">${escapeHtml(shop.name)}</div>
+        </div>
+        <div class="shop-tooltip">
+          <div class="tooltip-name">${escapeHtml(shop.name)}</div>
+          <div class="tooltip-cat">${escapeHtml(shop.category)}</div>
+          <div class="tooltip-dist">📍 ${escapeHtml(shop.area||shop.city||'Aurora')}</div>
+          <div class="tooltip-rating">★ ${shop.reviewCount?shop.rating.toFixed(1):'New'}</div>
+        </div>`;
+      scene.appendChild(node);
+    }
+  });
+}
+
+function showView(view, el){
+  ['nearby','browse','trending','new','orders','wishlist','messages'].forEach(v=>{
+    const d=document.getElementById('view-'+v);
+    if(d) d.style.display='none';
+  });
+  document.querySelectorAll('.sidebar-item').forEach(i=>i.classList.remove('active'));
+  const target=document.getElementById('view-'+view);
+  if(target) target.style.display='';
+  if(el) el.classList.add('active');
+  closeSidebar();
+  if(view==='browse') applyFilters();
+  if(view==='trending') renderGrid('trending-grid',[...SHOPS].sort((a,b)=>(b.rating||0)-(a.rating||0)));
+  if(view==='new') renderGrid('new-grid',[...SHOPS].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)));
+  if(view==='wishlist') renderWishlist();
+  if(view==='orders') loadMyOrders();
+  if(view==='messages') loadBuyerConversations();
+}
+
+function renderWishlist(){
+  const el=document.getElementById('wishlist-grid');
+  const list=AuroraWishlist.get();
+  if(!list.length){ el.innerHTML=`<div style="color:var(--text-dim);font-size:14px;padding:24px 0">No saved items yet. ❤️</div>`; return; }
+  el.innerHTML=list.map((i,idx)=>`
+    <div class="listing-card">
+      <div class="listing-img">${i.imageUrl ? `<img src="${i.imageUrl}" alt="${escapeHtml(i.name)}">` : (i.emoji||'📦')}</div>
+      <div class="listing-body">
+        <div class="listing-name">${escapeHtml(i.name)}</div>
+        <div class="listing-desc">from ${escapeHtml(i.shop||'Aurora Shop')}</div>
+        <div class="listing-footer"><div class="listing-price">₦${(i.price||0).toLocaleString()}</div>
+          <button class="btn-cart" onclick='addWishlistItemToCart(${idx})'>Add</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function addWishlistItemToCart(idx){
+  const item = AuroraWishlist.get()[idx];
+  if (!item) return;
+  AuroraCart.add({ ...item, qty: 1 });
+  showToast('🛒 Added to cart!');
+}
+
+async function loadMyOrders(){
+  const user = AuroraAuth.getCached();
+  const list = document.getElementById('my-orders-list');
+  if (!user) { list.innerHTML = '<div class="glass-card" style="padding:24px;text-align:center;color:var(--text-dim)">Sign in to see your orders. <a href="auth.html" style="color:var(--aurora-teal)">Sign in →</a></div>'; return; }
+  try {
+    const { orders } = await AuroraAPI.get('/orders/mine');
+    if (!orders.length) { list.innerHTML = '<div class="glass-card" style="padding:24px;text-align:center;color:var(--text-dim)">No orders yet — start exploring shops!</div>'; return; }
+    const statusClass = { pending:'status-pending', processing:'status-processing', delivered:'status-delivered', cancelled:'status-pending' };
+    const statusLabel = { pending:'Pending', processing:'In Transit', delivered:'Delivered ✓', cancelled:'Cancelled' };
+    list.innerHTML = orders.map(o => {
+      const thumb = (o.items&&o.items[0]&&o.items[0].imageUrl) ? `<img src="${o.items[0].imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">` : ((o.items&&o.items[0]&&o.items[0].emoji)||'📦');
+      return `
+      <div class="glass-card" style="padding:18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <div style="width:48px;height:48px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:30px">${thumb}</div>
+        <div style="flex:1;min-width:180px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:3px">${escapeHtml((o.items||[]).map(i=>i.name).join(', '))}</div>
+          <div style="font-size:11.5px;color:var(--text-dim)">from ${escapeHtml(o.shop?o.shop.name:'Aurora Shop')} · ordered ${timeAgo(o.created_at)}</div>
+          <div style="margin-top:7px"><span class="order-status ${statusClass[o.status]}">${statusLabel[o.status]}</span></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Orbitron',sans-serif;color:var(--aurora-green);font-weight:600;font-size:13px">₦${o.total.toLocaleString()}</div>
+          ${o.shop?`<a href="shop.html?slug=${o.shop.slug}" class="btn-secondary" style="margin-top:7px;font-size:11.5px;padding:5px 13px;display:inline-block">View Shop</a>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) { list.innerHTML = `<div class="glass-card" style="padding:24px;text-align:center;color:var(--text-dim)">${escapeHtml(err.message)}</div>`; }
+}
+
+async function loadBuyerConversations(){
+  const user = AuroraAuth.getCached();
+  const list = document.getElementById('buyer-msg-list');
+  if (!user) { list.innerHTML = '<div style="padding:16px;color:var(--text-dim);font-size:13px">Sign in to message shops.</div>'; return; }
+  try {
+    const { conversations } = await AuroraAPI.get('/messages/conversations');
+    if (!conversations.length) { list.innerHTML = '<div style="padding:16px;color:var(--text-dim);font-size:13px">No conversations yet. Message a shop from its page to get started.</div>'; return; }
+    list.innerHTML = conversations.map(c => `
+      <div class="msg-preview" data-shop="${c.shopId}" onclick='openChat(${c.shopId}, ${JSON.stringify(c.shopName)})'>
+        <div class="msg-preview-avatar">🏪</div>
+        <div class="msg-preview-info"><div class="msg-preview-name">${escapeHtml(c.shopName)}</div><div class="msg-preview-text">${escapeHtml(c.lastMessage)}</div></div>
+        <div class="msg-preview-time">${timeAgo(c.lastAt)}</div>
+      </div>`).join('');
+    if (conversations.length) openChat(conversations[0].shopId, conversations[0].shopName);
+  } catch (err) { list.innerHTML = `<div style="padding:16px;color:var(--text-dim);font-size:13px">${escapeHtml(err.message)}</div>`; }
+}
+async function openChat(shopId, shopName){
+  activeChatShop = shopId;
+  document.querySelectorAll('#buyer-msg-list .msg-preview').forEach(el => el.classList.toggle('active', el.dataset.shop == shopId));
+  document.getElementById('chat-name').textContent = shopName;
+  document.getElementById('chat-sub').textContent = '';
+  const shop = SHOPS.find(s => s.id === shopId);
+  const link = document.getElementById('chat-view-shop-link');
+  if (shop) { link.style.display=''; link.href = 'shop.html?slug=' + shop.slug; } else link.style.display='none';
+  try {
+    const { messages } = await AuroraAPI.get(`/messages/thread/${shopId}`);
+    const box = document.getElementById('chat-messages');
+    box.innerHTML = messages.map(m => `<div class="msg-bubble ${m.sender==='buyer'?'me':'them'}"><div>${escapeHtml(m.body)}</div><div class="msg-time">${timeAgo(m.created_at)}</div></div>`).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function sendMsg(){
+  const inp=document.getElementById('msg-input-field');
+  if(!inp.value.trim() || !activeChatShop) return;
+  try {
+    await AuroraAPI.post(`/messages/thread/${activeChatShop}`, { body: inp.value });
+    inp.value='';
+    openChat(activeChatShop, document.getElementById('chat-name').textContent);
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+function detectLocation(){
+  if(navigator.geolocation){
+    showToast('📍 Getting your location...');
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const {latitude:lat,longitude:lng}=pos.coords;
+      document.getElementById('location-label').textContent=`${lat.toFixed(2)}, ${lng.toFixed(2)}`;
+      showToast('✓ Location updated!');
+    }, ()=>showToast('Could not get location. Please enable GPS.','error'));
+  } else { showToast('Geolocation not supported','error'); }
+}
+
+async function init(){
+  try {
+    const { shops } = await AuroraAPI.get('/shops');
+    SHOPS = shops;
+    buildAtomNodes();
+    renderGrid('nearby-grid', SHOPS);
+  } catch (err) {
+    document.getElementById('nearby-grid').innerHTML = `<div style="padding:20px;color:var(--text-dim);font-size:13px">Couldn't load shops: ${escapeHtml(err.message)}</div>`;
+  }
+  const user = await AuroraAuth.refresh();
+  if (user) {
+    document.getElementById('nav-account-link').textContent = user.role === 'seller' ? 'Seller Hub' : 'My Account';
+    document.getElementById('nav-account-link').href = user.role === 'seller' ? 'seller.html' : '#';
+    document.getElementById('profile-name').textContent = `${user.first_name} ${user.last_name}`;
+    document.getElementById('profile-role').textContent = 'Buyer' + (user.city ? ' · ' + user.city : '');
+    document.getElementById('profile-avatar').textContent = (user.first_name||'?')[0].toUpperCase();
+    document.getElementById('user-profile-mini').onclick = null;
+    document.getElementById('nav-logout').style.display = '';
+  }
+}
+init();
+</script>
+</body></html>

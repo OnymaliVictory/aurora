@@ -1,0 +1,150 @@
+const express = require('express');
+const supabaseAdmin = require('../supabaseAdmin');
+const { requireAuth } = require('../auth');
+
+const router = express.Router();
+
+function slugify(name) {
+  return String(name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+// DB rows are snake_case; the frontend expects the same camelCase shape the
+// old JSON-file version used, so we translate at the boundary and leave the
+// rest of the frontend untouched.
+function shopOut(row, productCount = 0, orderCount = 0) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    owner_id: row.owner_id,
+    name: row.name,
+    slug: row.slug,
+    category: row.category,
+    description: row.description,
+    color: row.color,
+    city: row.city,
+    area: row.area,
+    address: row.address,
+    phone: row.phone,
+    openDays: row.open_days,
+    openTime: row.open_time,
+    closeTime: row.close_time,
+    deliveryHome: row.delivery_home,
+    deliveryPickup: row.delivery_pickup,
+    payOnDelivery: row.pay_on_delivery,
+    emoji: row.emoji,
+    rating: row.rating,
+    reviewCount: row.review_count,
+    created_at: row.created_at,
+    productCount,
+    orderCount,
+  };
+}
+
+async function withComputed(row) {
+  const [{ count: productCount }, { count: orderCount }] = await Promise.all([
+    supabaseAdmin.from('products').select('id', { count: 'exact', head: true }).eq('shop_id', row.id),
+    supabaseAdmin.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', row.id),
+  ]);
+  return shopOut(row, productCount || 0, orderCount || 0);
+}
+
+router.get('/', async (req, res) => {
+  const { q, category } = req.query;
+  let query = supabaseAdmin.from('shops').select('*').order('created_at', { ascending: false });
+  if (category && category !== 'all') query = query.ilike('category', `%${category}%`);
+  if (q) query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%`);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  const shops = await Promise.all(data.map(withComputed));
+  res.json({ shops });
+});
+
+router.get('/mine', requireAuth, async (req, res) => {
+  const { data, error } = await supabaseAdmin.from('shops').select('*').eq('owner_id', req.user.id).maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.json({ shop: null });
+  res.json({ shop: await withComputed(data) });
+});
+
+router.get('/:idOrSlug', async (req, res) => {
+  const key = req.params.idOrSlug;
+  const isNumeric = /^\d+$/.test(key);
+  const query = supabaseAdmin.from('shops').select('*');
+  const { data, error } = isNumeric
+    ? await query.eq('id', Number(key)).maybeSingle()
+    : await query.eq('slug', key).maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Shop not found.' });
+  res.json({ shop: await withComputed(data) });
+});
+
+router.post('/', requireAuth, async (req, res) => {
+  const { data: existing } = await supabaseAdmin.from('shops').select('*').eq('owner_id', req.user.id).maybeSingle();
+  if (existing) return res.status(409).json({ error: 'You already have a shop.', shop: await withComputed(existing) });
+
+  const {
+    name, category, description, color, city, area, address, phone,
+    openDays, openTime, closeTime, deliveryHome, deliveryPickup, payOnDelivery,
+  } = req.body || {};
+
+  if (!name || !category) {
+    return res.status(400).json({ error: 'Shop name and category are required.' });
+  }
+
+  let slug = slugify(name);
+  let unique = slug, n = 1;
+  while (true) {
+    const { data: taken } = await supabaseAdmin.from('shops').select('id').eq('slug', unique).maybeSingle();
+    if (!taken) break;
+    unique = `${slug}-${++n}`;
+  }
+
+  const { data: shop, error } = await supabaseAdmin.from('shops').insert({
+    owner_id: req.user.id,
+    name: name.trim(),
+    slug: unique,
+    category,
+    description: description || '',
+    color: color || '#00ffb3',
+    city: city || '',
+    area: area || '',
+    address: address || '',
+    phone: phone || '',
+    open_days: Array.isArray(openDays) ? openDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    open_time: openTime || '09:00',
+    close_time: closeTime || '21:00',
+    delivery_home: !!deliveryHome,
+    delivery_pickup: !!deliveryPickup,
+    pay_on_delivery: !!payOnDelivery,
+  }).select().single();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  if (req.user.role !== 'seller') {
+    await supabaseAdmin.from('profiles').update({ role: 'seller' }).eq('id', req.user.id);
+  }
+
+  res.json({ shop: await withComputed(shop) });
+});
+
+router.patch('/:id', requireAuth, async (req, res) => {
+  const { data: shop } = await supabaseAdmin.from('shops').select('*').eq('id', Number(req.params.id)).maybeSingle();
+  if (!shop) return res.status(404).json({ error: 'Shop not found.' });
+  if (shop.owner_id !== req.user.id) return res.status(403).json({ error: 'Not your shop.' });
+
+  const map = {
+    name: 'name', category: 'category', description: 'description', color: 'color',
+    city: 'city', area: 'area', address: 'address', phone: 'phone',
+    openDays: 'open_days', openTime: 'open_time', closeTime: 'close_time',
+    deliveryHome: 'delivery_home', deliveryPickup: 'delivery_pickup', payOnDelivery: 'pay_on_delivery',
+    emoji: 'emoji',
+  };
+  const patch = {};
+  Object.entries(map).forEach(([camel, col]) => { if (camel in (req.body || {})) patch[col] = req.body[camel]; });
+
+  const { data: updated, error } = await supabaseAdmin.from('shops').update(patch).eq('id', shop.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ shop: await withComputed(updated) });
+});
+
+module.exports = router;

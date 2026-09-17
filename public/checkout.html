@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aurora — Checkout</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="buyer.html" class="nav-link">← Continue Shopping</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+  <button class="hamburger" id="hamburger-btn" onclick="toggleMobileNav()"><span></span><span></span><span></span></button>
+</nav>
+
+<div class="checkout-page">
+  <!-- PROGRESS STEPS -->
+  <div class="checkout-steps">
+    <div class="step-item done" id="cs-1"><div class="step-circle">✓</div><span class="step-label">Cart</span></div>
+    <div class="step-line"></div>
+    <div class="step-item active" id="cs-2"><div class="step-circle">2</div><span class="step-label">Delivery</span></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="cs-3"><div class="step-circle">3</div><span class="step-label">Payment</span></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="cs-4"><div class="step-circle">4</div><span class="step-label">Confirm</span></div>
+  </div>
+
+  <div id="checkout-empty" style="display:none;text-align:center;padding:60px 0">
+    <div style="font-size:44px;margin-bottom:14px">🛒</div>
+    <p style="font-size:15px;color:var(--text-muted);margin-bottom:20px">Your cart is empty.</p>
+    <a href="buyer.html" class="btn-primary">Explore Shops →</a>
+  </div>
+
+  <!-- STEP: DELIVERY -->
+  <div id="checkout-delivery">
+    <div class="checkout-grid">
+      <div class="checkout-form-panel">
+        <h3>Delivery Information</h3>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="co-firstname" required></div>
+            <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="co-lastname" required></div>
+          </div>
+          <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" id="co-phone" type="tel" required></div>
+          <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" id="co-email" type="email" disabled></div>
+          <div class="form-group"><label class="form-label">Delivery Address</label><input class="form-input" id="co-address" placeholder="House/Flat number, Street name" required></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">City</label><input class="form-input" id="co-city" placeholder="Lagos"></div>
+            <div class="form-group"><label class="form-label">Area</label><input class="form-input" id="co-area" placeholder="Lekki"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Delivery Type</label>
+            <div style="display:flex;flex-direction:column;gap:9px;margin-top:2px">
+              <div class="payment-method selected" onclick="selectDelivery(this,'standard')">
+                <span class="payment-method-icon">🚚</span>
+                <div><div class="payment-method-label">Standard Delivery</div><div class="payment-method-sub">1–3 business days · ₦1,500</div></div>
+                <div class="payment-radio"></div>
+              </div>
+              <div class="payment-method" onclick="selectDelivery(this,'express')">
+                <span class="payment-method-icon">⚡</span>
+                <div><div class="payment-method-label">Express Delivery</div><div class="payment-method-sub">Same day (order before 2pm) · ₦3,500</div></div>
+                <div class="payment-radio"></div>
+              </div>
+              <div class="payment-method" onclick="selectDelivery(this,'pickup')">
+                <span class="payment-method-icon">🏪</span>
+                <div><div class="payment-method-label">Store Pickup</div><div class="payment-method-sub">Pick up from the shop · Free</div></div>
+                <div class="payment-radio"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Delivery Note (optional)</label><input class="form-input" id="co-note" placeholder="e.g. Ring bell twice, blue gate"></div>
+        </div>
+        <div id="delivery-error" class="form-hint" style="color:#ff6b6b;display:none;margin-top:10px"></div>
+        <button class="btn-full" style="margin-top:22px" onclick="goCheckoutStep(3)">Continue to Payment →</button>
+      </div>
+      <div class="order-summary-panel">
+        <h3>Order Summary</h3>
+        <div id="summary-items"></div>
+        <div class="summary-total"><span class="summary-total-label">Total</span><span class="summary-total-val" id="summary-total">₦0</span></div>
+        <div style="margin-top:14px;padding:12px;border-radius:10px;background:rgba(0,255,179,.05);border:1px solid rgba(0,255,179,.15)">
+          <div style="font-size:11px;color:var(--aurora-green);font-family:'Orbitron',sans-serif;letter-spacing:1px;margin-bottom:6px">BUYER PROTECTION</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6">All purchases on Aurora are protected. Get a full refund if your item doesn't arrive.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP: PAYMENT -->
+  <div id="checkout-payment" style="display:none">
+    <div class="checkout-grid">
+      <div class="checkout-form-panel">
+        <h3>Payment Method</h3>
+        <div class="payment-methods">
+          <div class="payment-method selected" onclick="selectPayment(this,'card')">
+            <span class="payment-method-icon">💳</span>
+            <div><div class="payment-method-label">Credit / Debit Card</div><div class="payment-method-sub">Visa, Mastercard, Verve</div></div>
+            <div class="payment-radio"></div>
+          </div>
+          <div class="payment-method" onclick="selectPayment(this,'transfer')">
+            <span class="payment-method-icon">🏦</span>
+            <div><div class="payment-method-label">Bank Transfer</div><div class="payment-method-sub">Instant bank transfer</div></div>
+            <div class="payment-radio"></div>
+          </div>
+          <div class="payment-method" onclick="selectPayment(this,'pod')">
+            <span class="payment-method-icon">💵</span>
+            <div><div class="payment-method-label">Pay on Delivery</div><div class="payment-method-sub">Cash or POS at your door</div></div>
+            <div class="payment-radio"></div>
+          </div>
+        </div>
+        <div id="card-form" style="display:flex;flex-direction:column;gap:13px">
+          <div class="form-group"><label class="form-label">Card Number</label><input class="form-input" placeholder="1234 5678 9012 3456" maxlength="19" oninput="formatCard(this)"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Expiry Date</label><input class="form-input" placeholder="MM / YY" maxlength="7"></div>
+            <div class="form-group"><label class="form-label">CVV</label><input class="form-input" placeholder="123" maxlength="4" type="password"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Cardholder Name</label><input class="form-input" placeholder="Full name on card"></div>
+        </div>
+        <p style="font-size:11.5px;color:var(--text-dim);margin-top:10px">Payment processing isn't wired up to a real gateway yet — placing an order records it for the seller with your chosen payment method, but no card will actually be charged.</p>
+        <div style="display:flex;gap:11px;margin-top:20px">
+          <button class="btn-secondary" style="flex-shrink:0;padding:13px 18px;border-radius:12px" onclick="goCheckoutStep(2)">← Back</button>
+          <button class="btn-full" id="place-order-btn" onclick="placeOrder()">Place Order — <span id="pay-total">₦0</span></button>
+        </div>
+      </div>
+      <div class="order-summary-panel">
+        <h3>Order Summary</h3>
+        <div id="summary-items-2"></div>
+        <div class="summary-total"><span class="summary-total-label">Total</span><span class="summary-total-val" id="summary-total-2">₦0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP: CONFIRMATION -->
+  <div id="checkout-confirm" style="display:none;text-align:center;padding:40px 0">
+    <div class="success-check">✓</div>
+    <h2 style="font-family:'Cinzel Decorative',serif;font-size:28px;font-weight:700;margin-bottom:10px">Order Placed! 🎉</h2>
+    <p style="font-size:15px;color:var(--text-muted);margin-bottom:28px" id="confirm-sub">Your order has been received.</p>
+    <div class="glass-card" style="padding:22px;max-width:440px;margin:0 auto 28px;text-align:left">
+      <div style="font-family:'Orbitron',sans-serif;font-size:9.5px;letter-spacing:2px;color:var(--text-dim);margin-bottom:12px">ORDER DETAILS</div>
+      <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:8px"><span style="color:var(--text-muted)">Status</span><span class="order-status status-pending">Pending</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:8px"><span style="color:var(--text-muted)">Delivery</span><span id="confirm-delivery">Standard · 1–3 days</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--text-muted)">Total Paid</span><span style="font-family:'Orbitron',sans-serif;color:var(--aurora-green);font-weight:700" id="confirm-total">₦0</span></div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="buyer.html" class="btn-hero">Continue Shopping</a>
+      <a href="buyer.html" class="btn-hero-ghost">Track My Orders</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+let deliveryType='standard', deliveryFee=1500, selectedPayment='card';
+
+function fmtNaira(n){ return '₦'+Math.round(n).toLocaleString(); }
+
+function renderSummary(ids){
+  const cart=AuroraCart.get();
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.innerHTML=cart.map(i=>`
+      <div class="summary-item">
+        <span>${i.emoji||'📦'} ${escapeHtml(i.name)}${i.size?' ('+escapeHtml(i.size)+')':''} × ${i.qty}</span>
+        <span style="font-weight:600">${fmtNaira(i.price*i.qty)}</span>
+      </div>`).join('')+
+      `<div class="summary-item"><span style="color:var(--text-muted)">Delivery</span><span>${fmtNaira(deliveryFee)}</span></div>`;
+  });
+  const total=AuroraCart.total()+deliveryFee;
+  document.querySelectorAll('#summary-total,#summary-total-2').forEach(el=>{if(el)el.textContent=fmtNaira(total)});
+  document.querySelectorAll('#pay-total').forEach(el=>{if(el)el.textContent=fmtNaira(total)});
+  const ctEl=document.getElementById('confirm-total');
+  if(ctEl) ctEl.textContent=fmtNaira(total);
+}
+
+function goCheckoutStep(step){
+  if (step === 3) {
+    const required = ['co-firstname','co-lastname','co-phone'];
+    if (deliveryType !== 'pickup') required.push('co-address');
+    for (const id of required) {
+      if (!document.getElementById(id).value.trim()) {
+        document.getElementById('delivery-error').textContent = 'Please fill in all required delivery details.';
+        document.getElementById('delivery-error').style.display = 'block';
+        return;
+      }
+    }
+    document.getElementById('delivery-error').style.display = 'none';
+  }
+  document.getElementById('checkout-delivery').style.display='none';
+  document.getElementById('checkout-payment').style.display='none';
+  document.getElementById('checkout-confirm').style.display='none';
+  document.querySelectorAll('.step-item').forEach((s,i)=>{
+    s.classList.remove('active','done');
+    if(i+1<step) s.classList.add('done');
+    else if(i+1===step) s.classList.add('active');
+  });
+  if(step===2){ document.getElementById('checkout-delivery').style.display=''; renderSummary(['summary-items']); }
+  if(step===3){ document.getElementById('checkout-payment').style.display=''; renderSummary(['summary-items-2']); }
+  if(step===4){ document.getElementById('checkout-confirm').style.display=''; }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function selectDelivery(el,type){
+  document.querySelectorAll('#checkout-delivery .payment-method').forEach(m=>m.classList.remove('selected'));
+  el.classList.add('selected');
+  deliveryType=type;
+  deliveryFee=type==='standard'?1500:type==='express'?3500:0;
+  renderSummary(['summary-items']);
+}
+function selectPayment(el,type){
+  document.querySelectorAll('#checkout-payment .payment-method').forEach(m=>m.classList.remove('selected'));
+  el.classList.add('selected'); selectedPayment=type;
+  document.getElementById('card-form').style.display=type==='card'?'flex':'none';
+}
+function formatCard(inp){
+  let v=inp.value.replace(/\D/g,'').substring(0,16);
+  inp.value=v.replace(/(\d{4})(?=\d)/g,'$1 ');
+}
+
+async function placeOrder(){
+  const btn = document.getElementById('place-order-btn');
+  btn.disabled = true; btn.textContent = 'Placing order…';
+  const cart = AuroraCart.get();
+  try {
+    const { orders } = await AuroraAPI.post('/orders', {
+      items: cart.map(i => ({ productId: i.productId, qty: i.qty, size: i.size })),
+      deliveryType,
+      address: document.getElementById('co-address').value,
+      city: document.getElementById('co-city').value,
+      area: document.getElementById('co-area').value,
+      phone: document.getElementById('co-phone').value,
+      paymentMethod: selectedPayment,
+      note: document.getElementById('co-note').value,
+    });
+    AuroraCart.clear();
+    const deliveryLabel = { standard: 'Standard · 1–3 days', express: 'Express · same day', pickup: 'Store pickup' }[deliveryType];
+    document.getElementById('confirm-delivery').textContent = deliveryLabel;
+    const orderIds = orders.map(o => '#AUR-' + o.id).join(', ');
+    document.getElementById('confirm-sub').innerHTML = `Your order <strong style="color:var(--aurora-teal)">${orderIds}</strong> has been received.`;
+    goCheckoutStep(4);
+    showToast('🎉 Order confirmed!');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = 'Place Order — <span id="pay-total">'+fmtNaira(AuroraCart.total()+deliveryFee)+'</span>';
+  }
+}
+
+async function init(){
+  const user = await AuroraAuth.requireAuth();
+  if (!user) return;
+  document.getElementById('co-firstname').value = user.first_name;
+  document.getElementById('co-lastname').value = user.last_name;
+  document.getElementById('co-phone').value = user.phone || '';
+  document.getElementById('co-email').value = user.email;
+
+  if (!AuroraCart.get().length) {
+    document.getElementById('checkout-delivery').style.display = 'none';
+    document.getElementById('checkout-empty').style.display = '';
+    return;
+  }
+  renderSummary(['summary-items']);
+}
+init();
+</script>
+</body></html>

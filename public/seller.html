@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aurora — Seller Hub</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="#" id="view-shop-link" class="btn-secondary">View My Shop</a>
+    <a href="buyer.html" class="btn-primary">Switch to Buying</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+  <button class="hamburger" id="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+</nav>
+
+<div style="padding-top:68px" class="rel">
+<div class="app-layout">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="sidebar-logo-text">✦ AURORA</div><div class="sidebar-logo-sub">Seller Hub</div></div>
+    <div class="sidebar-section">Shop</div>
+    <div class="sidebar-item active" onclick="showSellerView('dashboard',this)"><span class="s-icon">📊</span>Dashboard</div>
+    <div class="sidebar-item" onclick="document.getElementById('view-shop-link').click()"><span class="s-icon">🏪</span>My Shop</div>
+    <div class="sidebar-item" onclick="openAddProduct()"><span class="s-icon">➕</span>Add Product</div>
+    <div class="sidebar-section">Sales</div>
+    <div class="sidebar-item" onclick="showSellerView('orders',this)"><span class="s-icon">📦</span>Orders<span class="sidebar-badge" id="orders-badge" style="display:none">0</span></div>
+    <div class="sidebar-item" onclick="showSellerView('earnings',this)"><span class="s-icon">💰</span>Earnings</div>
+    <div class="sidebar-item" onclick="showSellerView('messages',this)"><span class="s-icon">💬</span>Messages<span class="sidebar-badge" id="messages-badge" style="display:none">0</span></div>
+    <div class="sidebar-section">Grow</div>
+    <div class="sidebar-item" onclick="showToast('Promotions coming soon!')"><span class="s-icon">📣</span>Promotions</div>
+    <div class="sidebar-item" onclick="showSellerView('analytics',this)"><span class="s-icon">📈</span>Analytics</div>
+    <div class="sidebar-item" onclick="showSellerView('reviews',this)"><span class="s-icon">⭐</span>Reviews</div>
+    <div class="sidebar-item" onclick="showToast('Settings coming soon!')"><span class="s-icon">⚙️</span>Settings</div>
+    <div class="sidebar-item" onclick="AuroraAuth.logout()"><span class="s-icon">🚪</span>Log Out</div>
+    <div class="user-profile-mini">
+      <div class="avatar" id="sidebar-avatar" style="background:linear-gradient(135deg,var(--aurora-purple),var(--aurora-pink))">?</div>
+      <div><div class="u-name" id="sidebar-uname">—</div><div class="u-role" id="sidebar-shopname">—</div></div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+
+    <!-- DASHBOARD -->
+    <div id="sel-dashboard">
+      <div class="dash-header">
+        <div class="dash-greeting" id="dash-greeting">Welcome ✦</div>
+        <div class="dash-title" id="dash-title">Your Shop</div>
+        <div class="dash-subtitle">Here's what's happening with your shop today</div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:22px;flex-wrap:wrap">
+        <a href="#" id="view-shop-link-2" class="btn-primary" style="font-size:13px;padding:9px 20px">View Live Shop →</a>
+        <button class="btn-secondary" style="font-size:13px;padding:9px 20px" onclick="copyLink()">🔗 Copy Shop Link</button>
+        <button class="btn-secondary" style="font-size:13px;padding:9px 20px" onclick="openAddProduct()">+ Add Product</button>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card" style="--kpi-color:var(--aurora-green)"><div class="kpi-icon">💰</div><div class="kpi-value" id="kpi-revenue">₦0</div><div class="kpi-label">Total Revenue</div><div class="kpi-change up" id="kpi-revenue-sub">From delivered orders</div></div>
+        <div class="kpi-card" style="--kpi-color:var(--aurora-teal)"><div class="kpi-icon">📦</div><div class="kpi-value" id="kpi-orders">0</div><div class="kpi-label">Total Orders</div><div class="kpi-change up" id="kpi-orders-sub">All time</div></div>
+        <div class="kpi-card" style="--kpi-color:var(--aurora-purple)"><div class="kpi-icon">🛍️</div><div class="kpi-value" id="kpi-products">0</div><div class="kpi-label">Products Listed</div><div class="kpi-change up">Live on your shop</div></div>
+        <div class="kpi-card" style="--kpi-color:var(--aurora-pink)"><div class="kpi-icon">⏳</div><div class="kpi-value" id="kpi-pending">0</div><div class="kpi-label">Needs Attention</div><div class="kpi-change up">Pending or processing</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-panel">
+          <div class="panel-header"><span class="panel-title">Orders This Week</span><span class="panel-action" onclick="showSellerView('orders',null)">View all →</span></div>
+          <div class="mini-chart" id="sales-chart"></div>
+          <div class="chart-labels"><span class="chart-label">Mon</span><span class="chart-label">Tue</span><span class="chart-label">Wed</span><span class="chart-label">Thu</span><span class="chart-label">Fri</span><span class="chart-label">Sat</span><span class="chart-label">Sun</span></div>
+        </div>
+        <div class="dash-panel">
+          <div class="panel-header"><span class="panel-title">Recent Orders</span><span class="panel-action" onclick="showSellerView('orders',null)">See all →</span></div>
+          <div class="orders-list" id="recent-orders-list"><div style="padding:20px;color:var(--text-dim);font-size:13px">Loading…</div></div>
+        </div>
+      </div>
+      <div class="dash-panel products-panel">
+        <div class="panel-header"><span class="panel-title">My Products</span><button class="btn-primary" onclick="openAddProduct()" style="font-size:12px;padding:7px 16px">+ Add Product</button></div>
+        <div class="products-grid-sel" id="products-grid"><div style="padding:20px;color:var(--text-dim);font-size:13px">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- ORDERS VIEW -->
+    <div id="sel-orders" style="display:none">
+      <h2 class="page-title">All Orders</h2>
+      <p class="page-subtitle">Manage and fulfil customer orders</p>
+      <div style="display:flex;flex-direction:column;gap:11px" id="all-orders-list"><div style="padding:20px;color:var(--text-dim);font-size:13px">Loading…</div></div>
+    </div>
+
+    <!-- EARNINGS VIEW -->
+    <div id="sel-earnings" style="display:none">
+      <h2 class="page-title">Earnings</h2>
+      <p class="page-subtitle">Your financial overview</p>
+      <div class="kpi-grid">
+        <div class="kpi-card" style="--kpi-color:var(--aurora-green)"><div class="kpi-icon">💳</div><div class="kpi-value" id="earn-total">₦0</div><div class="kpi-label">Total Earned (Delivered)</div></div>
+        <div class="kpi-card" style="--kpi-color:var(--aurora-teal)"><div class="kpi-icon">🏦</div><div class="kpi-value" id="earn-pending">₦0</div><div class="kpi-label">Pending Payout</div></div>
+        <div class="kpi-card" style="--kpi-color:var(--aurora-purple)"><div class="kpi-icon">📅</div><div class="kpi-value" id="earn-month">₦0</div><div class="kpi-label">This Month</div></div>
+        <div class="kpi-card" style="--kpi-color:var(--aurora-pink)"><div class="kpi-icon">📊</div><div class="kpi-value" id="earn-week">₦0</div><div class="kpi-label">This Week</div></div>
+      </div>
+      <div class="dash-panel" style="margin-top:18px">
+        <div class="panel-header"><span class="panel-title">Payouts</span></div>
+        <p style="font-size:13px;color:var(--text-dim);padding:8px 0 16px">Automatic bank payouts aren't set up yet — this is a preview of what you've earned so far. Payout scheduling is on the roadmap.</p>
+      </div>
+    </div>
+
+    <!-- ANALYTICS VIEW -->
+    <div id="sel-analytics" style="display:none">
+      <h2 class="page-title">Analytics</h2>
+      <p class="page-subtitle">Deep insights into your shop performance</p>
+      <div class="dash-grid" style="margin-top:6px">
+        <div class="dash-panel"><div class="panel-header"><span class="panel-title">Top Products</span></div>
+          <div class="orders-list" id="top-products-list"><div style="padding:20px;color:var(--text-dim);font-size:13px">Not enough sales data yet.</div></div>
+        </div>
+        <div class="dash-panel">
+          <div class="panel-header"><span class="panel-title">Coming Soon</span></div>
+          <p style="font-size:13px;color:var(--text-dim);padding:8px 0">Visit tracking, conversion rate, and traffic-source breakdowns are on the roadmap — they'll appear here once shop analytics are wired up.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEWS VIEW -->
+    <div id="sel-reviews" style="display:none">
+      <h2 class="page-title">Customer Reviews</h2>
+      <p class="page-subtitle">Reviews aren't live yet</p>
+      <div class="glass-card" style="padding:32px;text-align:center;color:var(--text-dim)">
+        <div style="font-size:36px;margin-bottom:10px">⭐</div>
+        <p style="font-size:13.5px">No reviews yet. Ratings &amp; reviews are coming in a future update — buyers will be able to review orders once delivered.</p>
+      </div>
+    </div>
+
+    <!-- MESSAGES VIEW -->
+    <div id="sel-messages" style="display:none">
+      <h2 class="page-title" style="margin-bottom:20px">Customer Messages</h2>
+      <div class="msg-layout">
+        <div class="msg-list">
+          <div class="msg-list-header">Inbox</div>
+          <div class="msg-list-items" id="seller-msg-list"><div style="padding:16px;color:var(--text-dim);font-size:13px">No conversations yet.</div></div>
+        </div>
+        <div class="msg-chat">
+          <div class="msg-chat-header"><div style="font-size:22px">👤</div><div><div class="msg-chat-title" id="seller-chat-title">Select a conversation</div><div class="msg-chat-sub" id="seller-chat-sub"></div></div></div>
+          <div class="msg-chat-messages" id="seller-chat-messages"></div>
+          <div class="msg-chat-input">
+            <input class="msg-input" id="sel-msg-input" placeholder="Reply to customer..." onkeydown="if(event.key==='Enter')sendSellerMsg()">
+            <button class="msg-send-btn" onclick="sendSellerMsg()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<!-- ADD PRODUCT MODAL -->
+<div class="modal-overlay" id="modal-product">
+  <div class="modal modal-sm">
+    <div class="modal-header"><span class="modal-title">Add New Product</span><button class="modal-close" onclick="closeModal('modal-product')">✕</button></div>
+    <form onsubmit="handleAddProduct(event)" style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-group"><label class="form-label">Product Name</label><input class="form-input" id="np-name" type="text" placeholder="e.g. Air Force 1 White (Size 42)" required></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Price (₦)</label><input class="form-input" id="np-price" type="number" min="1" step="1" placeholder="28000" required></div>
+        <div class="form-group"><label class="form-label">Stock Quantity</label><input class="form-input" id="np-stock" type="number" min="0" step="1" placeholder="10"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-select" id="np-category"><option>Footwear</option><option>Clothing</option><option>Accessories</option><option>Electronics</option><option>Food &amp; Drinks</option><option>Beauty</option><option>Other</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" id="np-desc" rows="3" placeholder="Describe your product..."></textarea></div>
+      <div class="form-group"><label class="form-label">Emoji Icon (used until you add a photo)</label><input class="form-input" id="np-emoji" type="text" maxlength="2" placeholder="👟" value="📦"></div>
+      <div class="form-group"><label class="form-label">Product Photo (optional)</label>
+        <input type="file" id="np-image" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="previewProductImage(this)">
+        <div class="upload-area" id="np-upload-area" onclick="document.getElementById('np-image').click()">
+          <div class="upload-emoji" id="np-upload-icon">📷</div>
+          <div class="upload-text" id="np-upload-text">Click to upload a product photo<br><span style="font-size:11px;color:var(--text-dim)">JPG, PNG, WEBP, or GIF — stored in this browser for now</span></div>
+        </div>
+      </div>
+      <div id="np-error" class="form-hint" style="color:#ff6b6b;display:none"></div>
+      <button class="btn-full" type="submit" id="np-submit">Publish Product →</button>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+let myShop = null, myProducts = [], myOrders = [], myConversations = [], activeConvo = null;
+
+function showSellerView(view, el){
+  ['dashboard','orders','earnings','analytics','reviews','messages'].forEach(v=>{
+    const d=document.getElementById('sel-'+v);
+    if(d) d.style.display='none';
+  });
+  document.querySelectorAll('.sidebar-item').forEach(i=>i.classList.remove('active'));
+  const target=document.getElementById('sel-'+view);
+  if(target) target.style.display='';
+  if(el) el.classList.add('active');
+  closeSidebar();
+  if (view === 'orders') renderAllOrders();
+  if (view === 'earnings') renderEarnings();
+  if (view === 'analytics') renderAnalytics();
+  if (view === 'messages') loadConversations();
+}
+function openAddProduct(){ document.getElementById('modal-product').classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+let selectedProductFile = null;
+
+// Downscale/compress before upload so photos stay reasonably sized in
+// Supabase Storage, then hand back a real Blob for a multipart upload
+// (not a base64 string — the backend expects an actual file).
+function resizeImageToBlob(file, maxDim = 1200, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that image.'));
+    reader.onload = () => {
+      img.onerror = () => reject(new Error('Could not read that image.'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (!blob) return reject(new Error('Could not process that image.'));
+          resolve(blob);
+        }, 'image/jpeg', quality);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function previewProductImage(input){
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 8*1024*1024) { showToast('Please choose an image under 8MB', 'error'); input.value=''; return; }
+  selectedProductFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('np-upload-area').innerHTML = `<img src="${e.target.result}" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;display:block">`;
+  };
+  reader.readAsDataURL(file);
+}
+function resetAddProductForm(){
+  selectedProductFile = null;
+  document.getElementById('np-image').value = '';
+  document.getElementById('np-upload-area').innerHTML = `<div class="upload-emoji" id="np-upload-icon">📷</div><div class="upload-text" id="np-upload-text">Click to upload a product photo<br><span style="font-size:11px;color:var(--text-dim)">JPG, PNG, WEBP, or GIF</span></div>`;
+}
+
+async function handleAddProduct(e){
+  e.preventDefault();
+  const btn = document.getElementById('np-submit');
+  const errEl = document.getElementById('np-error');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Publishing…';
+  try {
+    const fd = new FormData();
+    fd.append('name', document.getElementById('np-name').value);
+    fd.append('price', document.getElementById('np-price').value);
+    fd.append('stock', document.getElementById('np-stock').value);
+    fd.append('category', document.getElementById('np-category').value);
+    fd.append('description', document.getElementById('np-desc').value);
+    fd.append('emoji', document.getElementById('np-emoji').value || '📦');
+    if (selectedProductFile) {
+      const blob = await resizeImageToBlob(selectedProductFile);
+      fd.append('image', blob, 'photo.jpg');
+    }
+
+    const { product } = await AuroraAPI.post(`/products/shop/${myShop.id}`, fd);
+
+    myProducts.unshift(product);
+    renderProducts();
+    closeModal('modal-product');
+    e.target.reset();
+    document.getElementById('np-emoji').value = '📦';
+    resetAddProductForm();
+    showToast('✓ Product published successfully!');
+  } catch (err) {
+    errEl.textContent = err.message; errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Publish Product →';
+  }
+}
+
+async function changeProductPhoto(id, input){
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 8*1024*1024) { showToast('Please choose an image under 8MB', 'error'); return; }
+  try {
+    const blob = await resizeImageToBlob(file);
+    const fd = new FormData();
+    fd.append('image', blob, 'photo.jpg');
+    const { product } = await AuroraAPI.post(`/products/${id}/image`, fd);
+    const idx = myProducts.findIndex(p => p.id === id);
+    if (idx >= 0) myProducts[idx] = product;
+    renderProducts();
+    showToast('✓ Photo updated!');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+function copyLink(){
+  const link = `${location.origin}/shop.html?slug=${myShop.slug}`;
+  navigator.clipboard?.writeText(link).catch(()=>{});
+  showToast('🔗 Shop link copied to clipboard!');
+}
+
+function fmtNaira(n){ return '₦' + Math.round(n||0).toLocaleString(); }
+
+function renderProducts(){
+  const grid = document.getElementById('products-grid');
+  document.getElementById('kpi-products').textContent = myProducts.length;
+  const cards = myProducts.map(p => `
+    <div class="product-card-sel" style="display:block;color:inherit;cursor:default">
+      <div class="product-img">${p.imageUrl ? `<img src="${p.imageUrl}" alt="${escapeHtml(p.name)}">` : (p.emoji||'📦')}</div>
+      <div class="product-body">
+        <div class="product-name">${escapeHtml(p.name)}</div>
+        <div class="product-price">${fmtNaira(p.price)}</div>
+        <div class="product-stock">Stock: ${p.stock ?? 0} · ${p.sold||0} sold</div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <input type="file" id="photo-input-${p.id}" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="changeProductPhoto(${p.id},this)">
+          <button class="btn-secondary" style="font-size:11px;padding:5px 10px" onclick="document.getElementById('photo-input-${p.id}').click()">${p.imageUrl?'Change Photo':'Add Photo'}</button>
+          <button class="btn-secondary" style="font-size:11px;padding:5px 10px" onclick="deleteProduct(${p.id})">Remove</button>
+        </div>
+      </div>
+    </div>`).join('');
+  grid.innerHTML = cards + `<div class="add-product-card" onclick="openAddProduct()"><div style="font-size:28px;color:var(--aurora-teal);margin-bottom:8px">＋</div><div style="font-size:12.5px;color:var(--text-muted)">Add New Product</div></div>`;
+}
+async function deleteProduct(id){
+  if (!confirm('Remove this product from your shop?')) return;
+  try {
+    await AuroraAPI.del(`/products/${id}`);
+    myProducts = myProducts.filter(p => p.id !== id);
+    renderProducts();
+    showToast('Product removed');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+function orderStatusClass(s){ return { pending:'status-pending', processing:'status-processing', delivered:'status-delivered', cancelled:'status-pending' }[s] || 'status-pending'; }
+function orderStatusLabel(s){ return { pending:'Pending', processing:'Processing', delivered:'Delivered ✓', cancelled:'Cancelled' }[s] || s; }
+
+function renderRecentOrders(){
+  const list = document.getElementById('recent-orders-list');
+  if (myOrders.length === 0) { list.innerHTML = '<div style="padding:20px;color:var(--text-dim);font-size:13px">No orders yet — share your shop link to start selling!</div>'; return; }
+  list.innerHTML = myOrders.slice(0,4).map(o => {
+    const thumb = (o.items&&o.items[0]&&o.items[0].imageUrl) ? `<img src="${o.items[0].imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">` : ((o.items&&o.items[0]&&o.items[0].emoji)||'📦');
+    return `<div class="order-row"><div style="width:30px;height:30px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:18px">${thumb}</div><div class="order-info"><div class="order-name">${escapeHtml((o.items&&o.items[0]&&o.items[0].name)||'Order')}${o.items&&o.items.length>1?' +'+(o.items.length-1)+' more':''}</div><div class="order-date">#AUR-${o.id} · ${timeAgo(o.created_at)}</div></div><div><div class="order-amount">${fmtNaira(o.total)}</div><div class="order-status ${orderStatusClass(o.status)}">${orderStatusLabel(o.status)}</div></div></div>`;
+  }).join('');
+}
+
+function renderAllOrders(){
+  const list = document.getElementById('all-orders-list');
+  if (myOrders.length === 0) { list.innerHTML = '<div class="glass-card" style="padding:24px;text-align:center;color:var(--text-dim)">No orders yet — share your shop link to start selling!</div>'; return; }
+  list.innerHTML = myOrders.map(o => {
+    const thumb = (o.items&&o.items[0]&&o.items[0].imageUrl) ? `<img src="${o.items[0].imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">` : ((o.items&&o.items[0]&&o.items[0].emoji)||'📦');
+    return `
+    <div class="order-row glass-card" style="padding:16px">
+      <div style="width:44px;height:44px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:26px">${thumb}</div>
+      <div class="order-info" style="flex:1;margin-left:12px">
+        <div class="order-name">#AUR-${o.id} · ${escapeHtml((o.items||[]).map(i=>i.name+(i.size?' ('+i.size+')':'')).join(', '))}</div>
+        <div class="order-date">${escapeHtml(o.buyer?o.buyer.name:'Buyer')} · ${timeAgo(o.created_at)} · ${escapeHtml(o.area||o.city||'')}</div>
+        <div class="order-status ${orderStatusClass(o.status)}" style="margin-top:5px">${orderStatusLabel(o.status)}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="order-amount">${fmtNaira(o.total)}</div>
+        ${o.status==='pending'?`<button class="btn-primary" style="margin-top:7px;font-size:12px;padding:6px 14px" onclick="updateOrderStatus(${o.id},'processing')">Start Processing</button>`:''}
+        ${o.status==='processing'?`<button class="btn-primary" style="margin-top:7px;font-size:12px;padding:6px 14px" onclick="updateOrderStatus(${o.id},'delivered')">Mark Delivered</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function updateOrderStatus(id, status){
+  try {
+    const { order } = await AuroraAPI.patch(`/orders/${id}/status`, { status });
+    const idx = myOrders.findIndex(o => o.id === id);
+    if (idx >= 0) myOrders[idx] = { ...myOrders[idx], ...order };
+    renderAllOrders(); renderRecentOrders(); renderKpis();
+    showToast('✓ Order updated');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+function renderKpis(){
+  const revenue = myOrders.filter(o=>o.status==='delivered').reduce((s,o)=>s+o.total,0);
+  const pendingCount = myOrders.filter(o=>o.status==='pending'||o.status==='processing').length;
+  document.getElementById('kpi-revenue').textContent = fmtNaira(revenue);
+  document.getElementById('kpi-orders').textContent = myOrders.length;
+  document.getElementById('kpi-pending').textContent = pendingCount;
+  const badge = document.getElementById('orders-badge');
+  if (pendingCount > 0) { badge.style.display=''; badge.textContent = pendingCount; } else badge.style.display='none';
+}
+
+function renderChart(){
+  const chart = document.getElementById('sales-chart');
+  chart.innerHTML = '';
+  const counts = [0,0,0,0,0,0,0]; // Mon..Sun
+  myOrders.forEach(o => {
+    const d = new Date(o.created_at);
+    const day = (d.getDay() + 6) % 7; // convert Sun=0 to Mon=0
+    counts[day]++;
+  });
+  const max = Math.max(1, ...counts);
+  counts.forEach(c => {
+    const b = document.createElement('div');
+    b.className = 'bar';
+    b.style.height = Math.max(6, (c / max) * 100) + '%';
+    chart.appendChild(b);
+  });
+}
+
+function renderEarnings(){
+  const delivered = myOrders.filter(o=>o.status==='delivered');
+  const pending = myOrders.filter(o=>o.status==='pending'||o.status==='processing');
+  const now = new Date();
+  const monthOrders = delivered.filter(o => { const d=new Date(o.created_at); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); });
+  const weekAgo = Date.now() - 7*24*60*60*1000;
+  const weekOrders = delivered.filter(o => new Date(o.created_at).getTime() >= weekAgo);
+  document.getElementById('earn-total').textContent = fmtNaira(delivered.reduce((s,o)=>s+o.total,0));
+  document.getElementById('earn-pending').textContent = fmtNaira(pending.reduce((s,o)=>s+o.total,0));
+  document.getElementById('earn-month').textContent = fmtNaira(monthOrders.reduce((s,o)=>s+o.total,0));
+  document.getElementById('earn-week').textContent = fmtNaira(weekOrders.reduce((s,o)=>s+o.total,0));
+}
+
+function renderAnalytics(){
+  const sorted = [...myProducts].filter(p=>p.sold>0).sort((a,b)=>(b.sold||0)-(a.sold||0)).slice(0,5);
+  const list = document.getElementById('top-products-list');
+  if (sorted.length === 0) { list.innerHTML = '<div style="padding:20px;color:var(--text-dim);font-size:13px">Not enough sales data yet.</div>'; return; }
+  list.innerHTML = sorted.map(p => `<div class="order-row"><div style="font-size:22px">${p.emoji||'📦'}</div><div class="order-info" style="margin-left:10px"><div class="order-name">${escapeHtml(p.name)}</div><div class="order-date">${p.sold} sold</div></div><div class="order-amount">${fmtNaira(p.price*p.sold)}</div></div>`).join('');
+}
+
+async function loadConversations(){
+  try {
+    const { conversations } = await AuroraAPI.get('/messages/conversations');
+    myConversations = conversations;
+    const list = document.getElementById('seller-msg-list');
+    if (conversations.length === 0) { list.innerHTML = "<div style=\"padding:16px;color:var(--text-dim);font-size:13px\">No conversations yet. When buyers message your shop, they'll show up here.</div>"; return; }
+    list.innerHTML = conversations.map(c => `
+      <div class="msg-preview" data-buyer="${c.buyerId}" onclick="openConversation(${c.buyerId}, '${escapeHtml(c.buyerName).replace(/'/g,"&#39;")}')">
+        <div class="msg-preview-avatar">👤</div>
+        <div class="msg-preview-info"><div class="msg-preview-name">${escapeHtml(c.buyerName)}</div><div class="msg-preview-text">${escapeHtml(c.lastMessage)}</div></div>
+        <div class="msg-preview-time">${timeAgo(c.lastAt)}</div>
+      </div>`).join('');
+    if (conversations.length) openConversation(conversations[0].buyerId, conversations[0].buyerName);
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function openConversation(buyerId, buyerName){
+  activeConvo = buyerId;
+  document.querySelectorAll('#seller-msg-list .msg-preview').forEach(el => el.classList.toggle('active', el.dataset.buyer == buyerId));
+  document.getElementById('seller-chat-title').textContent = buyerName;
+  document.getElementById('seller-chat-sub').textContent = 'Customer';
+  try {
+    const { messages } = await AuroraAPI.get(`/messages/thread/${myShop.id}?buyerId=${buyerId}`);
+    const box = document.getElementById('seller-chat-messages');
+    box.innerHTML = messages.map(m => `<div class="msg-bubble ${m.sender==='seller'?'me':'them'}"><div>${escapeHtml(m.body)}</div><div class="msg-time">${timeAgo(m.created_at)}</div></div>`).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function sendSellerMsg(){
+  const inp = document.getElementById('sel-msg-input');
+  if (!inp.value.trim() || !activeConvo) return;
+  try {
+    await AuroraAPI.post(`/messages/thread/${myShop.id}`, { body: inp.value, buyerId: activeConvo });
+    inp.value = '';
+    openConversation(activeConvo, document.getElementById('seller-chat-title').textContent);
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function init(){
+  const user = await AuroraAuth.requireAuth();
+  if (!user) return;
+  try {
+    const { shop } = await AuroraAPI.get('/shops/mine');
+    if (!shop) { window.location.href = 'create-shop.html'; return; }
+    myShop = shop;
+
+    document.getElementById('view-shop-link').href = `shop.html?slug=${shop.slug}`;
+    document.getElementById('view-shop-link-2').href = `shop.html?slug=${shop.slug}`;
+    const hour = new Date().getHours();
+    document.getElementById('dash-greeting').textContent = (hour<12?'Good Morning ☀️':hour<18?'Good Afternoon 🌤️':'Good Evening 🌙');
+    document.getElementById('dash-title').textContent = shop.name;
+    document.getElementById('sidebar-uname').textContent = `${user.first_name} ${user.last_name}`;
+    document.getElementById('sidebar-shopname').textContent = shop.name;
+    document.getElementById('sidebar-avatar').textContent = (user.first_name||'?')[0].toUpperCase();
+
+    const [{ products }, { orders }] = await Promise.all([
+      AuroraAPI.get(`/products/shop/${shop.id}`),
+      AuroraAPI.get('/orders/shop'),
+    ]);
+    myProducts = products;
+    myOrders = orders;
+    renderProducts();
+    renderRecentOrders();
+    renderKpis();
+    renderChart();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+init();
+</script>
+</body></html>

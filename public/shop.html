@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title id="page-title">Shop — Aurora</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="buyer.html" class="nav-link">← Discover</a>
+    <button class="btn-secondary" onclick="openCart()">🛒 Cart <span class="cart-count-badge" style="background:rgba(0,255,179,.15);color:var(--aurora-green);padding:1px 7px;border-radius:50px;font-size:11px;margin-left:3px">0</span></button>
+    <a href="auth.html" class="btn-primary" id="nav-account-link">Sign In</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+  <button class="hamburger" id="hamburger-btn" onclick="toggleMobileNav()"><span></span><span></span><span></span></button>
+</nav>
+
+<div style="padding-top:68px" class="rel" id="shop-content">
+  <div class="shop-cover">
+    <canvas id="shop-cover-canvas"></canvas>
+    <div class="shop-hero">
+      <div class="shop-logo-big" id="shop-logo-big">🏪</div>
+      <div class="shop-hero-info">
+        <div class="shop-name-big" id="shop-name-big">Loading shop…</div>
+        <div><span class="shop-cat-tag" id="shop-cat-tag">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shop-body">
+    <div class="shop-meta-bar">
+      <div class="shop-meta-item">⭐ <strong id="meta-rating">New</strong>&nbsp;<span id="meta-reviews"></span></div>
+      <div class="shop-meta-item">📦 <strong id="meta-orders">0</strong>&nbsp;orders</div>
+      <div class="shop-meta-item">📍 <strong id="meta-location">—</strong></div>
+      <div class="shop-meta-item" id="meta-open-wrap"><span class="status-dot" style="width:7px;height:7px;border-radius:50%;background:var(--aurora-green);display:inline-block;animation:pulse 2s infinite;margin-right:4px"></span><strong id="meta-open-label" style="color:var(--aurora-green)">Open Now</strong></div>
+      <div style="margin-left:auto;display:flex;gap:9px;flex-wrap:wrap">
+        <button class="btn-secondary" style="font-size:13px;padding:8px 16px" onclick="openMsgModal()">💬 Message</button>
+        <button class="btn-primary" style="font-size:13px;padding:8px 16px" onclick="copyShopLink()">🔗 Share Shop</button>
+      </div>
+    </div>
+
+    <div class="shop-tabs">
+      <button class="shop-tab active" onclick="shopTab('products',this)">Products</button>
+      <button class="shop-tab" onclick="shopTab('about',this)">About</button>
+      <button class="shop-tab" onclick="shopTab('reviews',this)">Reviews</button>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div id="tab-products">
+      <div class="product-listing-grid" id="products-grid"><div style="padding:20px;color:var(--text-dim);font-size:13px">Loading products…</div></div>
+    </div>
+
+    <!-- ABOUT -->
+    <div id="tab-about" style="display:none">
+      <div class="shop-about">
+        <div class="about-card">
+          <h4>About <span id="about-shop-name"></span></h4>
+          <p class="about-text" id="about-desc">This shop hasn't added a description yet.</p>
+        </div>
+        <div class="about-card">
+          <h4>Shop Information</h4>
+          <div class="info-row"><span class="info-icon">📍</span><span class="info-label">Location</span><span id="info-location">—</span></div>
+          <div class="info-row"><span class="info-icon">⏰</span><span class="info-label">Hours</span><span id="info-hours">—</span></div>
+          <div class="info-row"><span class="info-icon">🚚</span><span class="info-label">Delivery</span><span id="info-delivery">—</span></div>
+          <div class="info-row"><span class="info-icon">💳</span><span class="info-label">Payment</span><span id="info-payment">—</span></div>
+          <div class="info-row"><span class="info-icon">📞</span><span class="info-label">Phone</span><span id="info-phone">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEWS -->
+    <div id="tab-reviews" style="display:none">
+      <div class="glass-card" style="padding:32px;text-align:center;color:var(--text-dim)">
+        <div style="font-size:36px;margin-bottom:10px">⭐</div>
+        <p style="font-size:13.5px">No reviews yet. Be the first to shop here and leave one — reviews are coming in a future update.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="shop-not-found" style="display:none;padding-top:140px;text-align:center;color:var(--text-dim)">
+  <div style="font-size:48px;margin-bottom:14px">🔭</div>
+  <p style="font-size:15px;margin-bottom:14px">We couldn't find that shop.</p>
+  <a href="buyer.html" class="btn-primary">← Back to Discover</a>
+</div>
+
+<!-- PRODUCT DETAIL MODAL -->
+<div class="modal-overlay" id="modal-product">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="prod-modal-title">Product Name</span><button class="modal-close" onclick="closeProductModal()">✕</button></div>
+    <div class="product-detail-grid">
+      <div class="product-gallery">
+        <div class="gallery-main" id="gallery-main">📦</div>
+      </div>
+      <div class="product-info">
+        <div class="product-detail-name" id="prod-name"></div>
+        <div class="product-detail-shop" id="prod-shop-name">from this shop</div>
+        <div class="product-detail-price" id="prod-price"></div>
+        <div class="product-detail-desc" id="prod-desc"></div>
+        <div id="size-section" style="display:none">
+          <div class="size-label">Select Size</div>
+          <div class="size-grid" id="size-grid"></div>
+        </div>
+        <div class="qty-row">
+          <div style="font-size:12px;color:var(--text-muted)">Quantity</div>
+          <div class="qty-controls"><button class="qty-btn-lg" onclick="changeQtyModal(-1)">−</button><span class="qty-val" id="modal-qty">1</span><button class="qty-btn-lg" onclick="changeQtyModal(1)">+</button></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" onclick="addModalToCart()">Add to Cart</button>
+          <button class="btn-secondary" onclick="wishlistModal()" id="wish-btn">❤️</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGE MODAL -->
+<div class="modal-overlay" id="modal-msg">
+  <div class="modal modal-sm">
+    <div class="modal-header"><span class="modal-title" id="msg-modal-title">Message this shop</span><button class="modal-close" onclick="closeModal('modal-msg')">✕</button></div>
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <div class="form-group"><label class="form-label">Your Message</label><textarea class="form-input" rows="4" id="msg-textarea" placeholder="Hi! I have a question about..."></textarea></div>
+      <button class="btn-full" onclick="sendMessage()">Send Message</button>
+    </div>
+  </div>
+</div>
+
+<!-- CART DRAWER -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-header"><span class="cart-title">Your Cart</span><button class="cart-close" onclick="closeCart()">✕</button></div>
+  <div class="cart-items" id="cart-items-list"></div>
+  <div class="cart-footer">
+    <div class="cart-total"><span class="cart-total-label">Total</span><span class="cart-total-value" id="cart-total-val">₦0</span></div>
+    <a href="checkout.html" class="btn-full" style="display:block;text-align:center">Checkout →</a>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+let SHOP = null, PRODUCTS = [], currentProduct = null, modalQty = 1, selectedSize = '';
+
+function isShopOpenNow(s){
+  try {
+    const days = s.openDays || [];
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const now = new Date();
+    if (days.length && !days.includes(dayNames[now.getDay()])) return false;
+    const [oh,om] = (s.openTime||'00:00').split(':').map(Number);
+    const [ch,cm] = (s.closeTime||'23:59').split(':').map(Number);
+    const mins = now.getHours()*60+now.getMinutes();
+    return mins >= oh*60+om && mins <= ch*60+cm;
+  } catch { return true; }
+}
+
+function renderProducts(){
+  const grid=document.getElementById('products-grid');
+  if (!PRODUCTS.length) { grid.innerHTML = "<div style=\"padding:20px;color:var(--text-dim);font-size:13px\">This shop hasn't listed any products yet.</div>"; return; }
+  grid.innerHTML=PRODUCTS.map(p=>`
+    <div class="listing-card" onclick="openProductModal(${p.id})">
+      <div class="listing-img">${p.imageUrl ? `<img src="${p.imageUrl}" alt="${escapeHtml(p.name)}">` : (p.emoji||'📦')}</div>
+      <div class="listing-body">
+        <div class="listing-name">${escapeHtml(p.name)}</div>
+        <div class="listing-desc">${escapeHtml((p.description||'').substring(0,68))}${p.description&&p.description.length>68?'...':''}</div>
+        <div class="listing-footer">
+          <div class="listing-price">₦${p.price.toLocaleString()}</div>
+          <button class="btn-cart" onclick="event.stopPropagation();quickAdd(${p.id})" ${p.stock<=0?'disabled':''}>${p.stock<=0?'Sold Out':'+ Cart'}</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openProductModal(id){
+  currentProduct=PRODUCTS.find(p=>p.id===id);
+  if(!currentProduct)return;
+  modalQty=1; selectedSize='';
+  document.getElementById('prod-modal-title').textContent=currentProduct.name;
+  document.getElementById('prod-name').textContent=currentProduct.name;
+  document.getElementById('prod-shop-name').textContent='from '+SHOP.name;
+  document.getElementById('prod-price').textContent='₦'+currentProduct.price.toLocaleString();
+  document.getElementById('prod-desc').textContent=currentProduct.description || 'No description provided.';
+  document.getElementById('modal-qty').textContent=1;
+  document.getElementById('gallery-main').innerHTML = currentProduct.imageUrl
+    ? `<img src="${currentProduct.imageUrl}" alt="${escapeHtml(currentProduct.name)}">`
+    : escapeHtml(currentProduct.emoji||'📦');
+  const sizes = currentProduct.sizes || [];
+  const sizeSection = document.getElementById('size-section');
+  if (sizes.length) {
+    sizeSection.style.display='';
+    document.getElementById('size-grid').innerHTML=sizes.map(s=>`<button class="size-btn" onclick="selectSize(this,'${escapeHtml(s)}')">${escapeHtml(s)}</button>`).join('');
+  } else {
+    sizeSection.style.display='none';
+  }
+  document.getElementById('wish-btn').classList.toggle('active', AuroraWishlist.has(currentProduct.id));
+  document.getElementById('modal-product').classList.add('open');
+}
+function closeProductModal(){ document.getElementById('modal-product').classList.remove('open'); currentProduct=null; }
+function selectSize(el,size){ document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); selectedSize=size; }
+function changeQtyModal(d){ modalQty=Math.max(1,modalQty+d); document.getElementById('modal-qty').textContent=modalQty; }
+function addModalToCart(){
+  if(!currentProduct)return;
+  if((currentProduct.sizes||[]).length && !selectedSize){ showToast('Please select a size first','error'); return; }
+  AuroraCart.add({productId:currentProduct.id,name:currentProduct.name,price:currentProduct.price,shop:SHOP.name,emoji:currentProduct.emoji,imageUrl:currentProduct.imageUrl,size:selectedSize,qty:modalQty});
+  showToast('✓ Added to cart!');
+  closeProductModal();
+}
+function wishlistModal(){
+  if(!currentProduct)return;
+  AuroraWishlist.toggle({productId:currentProduct.id,name:currentProduct.name,price:currentProduct.price,shop:SHOP.name,emoji:currentProduct.emoji,imageUrl:currentProduct.imageUrl});
+  document.getElementById('wish-btn').classList.toggle('active', AuroraWishlist.has(currentProduct.id));
+}
+function quickAdd(id){
+  const p=PRODUCTS.find(x=>x.id===id);
+  if(!p || p.stock<=0)return;
+  AuroraCart.add({productId:p.id,name:p.name,price:p.price,shop:SHOP.name,emoji:p.emoji,imageUrl:p.imageUrl,qty:1});
+  showToast('✓ Added to cart!');
+}
+function shopTab(tab,el){
+  ['products','about','reviews'].forEach(t=>{ const d=document.getElementById('tab-'+t); if(d) d.style.display='none'; });
+  document.querySelectorAll('.shop-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+tab).style.display='';
+}
+function copyShopLink(){ navigator.clipboard?.writeText(location.origin+'/shop.html?slug='+SHOP.slug).catch(()=>{}); showToast('🔗 Shop link copied!'); }
+function openMsgModal(){
+  if (!AuroraAuth.getCached()) { window.location.href = 'auth.html'; return; }
+  document.getElementById('modal-msg').classList.add('open');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+async function sendMessage(){
+  const t=document.getElementById('msg-textarea');
+  if(!t.value.trim())return;
+  try {
+    await AuroraAPI.post(`/messages/thread/${SHOP.id}`, { body: t.value });
+    closeModal('modal-msg');
+    showToast('💬 Message sent to '+SHOP.name+'!');
+    t.value='';
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+function renderShop(){
+  document.getElementById('page-title').textContent = SHOP.name + ' — Aurora';
+  document.getElementById('shop-logo-big').textContent = SHOP.emoji || '🏪';
+  document.getElementById('shop-name-big').textContent = SHOP.name;
+  document.getElementById('shop-cat-tag').textContent = SHOP.category;
+  document.getElementById('meta-rating').textContent = SHOP.reviewCount ? SHOP.rating.toFixed(1) : 'New';
+  document.getElementById('meta-reviews').textContent = SHOP.reviewCount ? `(${SHOP.reviewCount} reviews)` : '';
+  document.getElementById('meta-orders').textContent = SHOP.orderCount || 0;
+  const loc = [SHOP.area, SHOP.city].filter(Boolean).join(', ') || 'Location not set';
+  document.getElementById('meta-location').textContent = loc;
+  const open = isShopOpenNow(SHOP);
+  document.getElementById('meta-open-label').textContent = open ? 'Open Now' : 'Closed';
+  document.getElementById('meta-open-label').style.color = open ? 'var(--aurora-green)' : 'var(--text-dim)';
+
+  document.getElementById('about-shop-name').textContent = SHOP.name;
+  document.getElementById('about-desc').textContent = SHOP.description || "This shop hasn't added a description yet.";
+  document.getElementById('info-location').textContent = SHOP.address ? `${SHOP.address}, ${loc}` : loc;
+  document.getElementById('info-hours').textContent = `${(SHOP.openTime||'—')} – ${(SHOP.closeTime||'—')} · ${(SHOP.openDays||[]).join(', ')||'—'}`;
+  const deliveryBits = [];
+  if (SHOP.deliveryHome) deliveryBits.push('Home delivery');
+  if (SHOP.deliveryPickup) deliveryBits.push('Store pickup');
+  document.getElementById('info-delivery').textContent = deliveryBits.length ? deliveryBits.join(' · ') : 'Not specified';
+  document.getElementById('info-payment').textContent = SHOP.payOnDelivery ? 'Card, Bank Transfer, Pay on Delivery' : 'Card, Bank Transfer';
+  document.getElementById('info-phone').textContent = SHOP.phone || 'Not provided';
+  document.getElementById('msg-modal-title').textContent = 'Message ' + SHOP.name;
+}
+
+async function init(){
+  const params = new URLSearchParams(location.search);
+  const key = params.get('slug') || params.get('id');
+  if (!key) { document.getElementById('shop-content').style.display='none'; document.getElementById('shop-not-found').style.display=''; return; }
+  try {
+    const { shop } = await AuroraAPI.get(`/shops/${encodeURIComponent(key)}`);
+    SHOP = shop;
+    renderShop();
+    const { products } = await AuroraAPI.get(`/products/shop/${shop.id}`);
+    PRODUCTS = products;
+    renderProducts();
+  } catch (err) {
+    document.getElementById('shop-content').style.display='none';
+    document.getElementById('shop-not-found').style.display='';
+    return;
+  }
+  const user = await AuroraAuth.refresh();
+  if (user) {
+    document.getElementById('nav-account-link').textContent = user.role === 'seller' ? 'Seller Hub' : 'My Account';
+    document.getElementById('nav-account-link').href = user.role === 'seller' ? 'seller.html' : 'buyer.html';
+  }
+}
+init();
+</script>
+</body></html>
