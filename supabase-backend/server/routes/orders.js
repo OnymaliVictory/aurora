@@ -1,98 +1,23 @@
 const express = require('express');
 const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
+const { createOrdersFromCart, orderOut } = require('../orderCreation');
 
 const router = express.Router();
 
-const DELIVERY_FEES = { standard: 1500, express: 3500, pickup: 0 };
-
-function orderOut(row, extra = {}) {
-  return {
-    id: row.id,
-    buyer_id: row.buyer_id,
-    shop_id: row.shop_id,
-    status: row.status,
-    deliveryType: row.delivery_type,
-    deliveryFee: Number(row.delivery_fee),
-    subtotal: Number(row.subtotal),
-    total: Number(row.total),
-    address: row.address,
-    city: row.city,
-    area: row.area,
-    phone: row.phone,
-    paymentMethod: row.payment_method,
-    note: row.note,
-    items: row.items,
-    created_at: row.created_at,
-    ...extra,
-  };
-}
-
+// Pay on Delivery only. Online payment (card/transfer) goes through
+// POST /api/payments/checkout instead, which creates the order the same
+// way but also starts a real Paystack transaction.
 router.post('/', requireAuth, async (req, res) => {
-  const { items, deliveryType, address, city, area, phone, paymentMethod, note } = req.body || {};
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'Your cart is empty.' });
+  if (req.body && req.body.paymentMethod && req.body.paymentMethod !== 'pod') {
+    return res.status(400).json({ error: 'Card and bank transfer payments go through /api/payments/checkout.' });
   }
-  if (deliveryType !== 'pickup' && !address) {
-    return res.status(400).json({ error: 'Please add a delivery address.' });
+  try {
+    const orders = await createOrdersFromCart(req.user.id, req.user.phone, { ...req.body, paymentMethod: 'pod' });
+    res.json({ orders: orders.map(o => orderOut(o)) });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
   }
-
-  const productIds = [...new Set(items.map(i => Number(i.productId)))];
-  const { data: products, error: prodErr } = await supabaseAdmin.from('products').select('*').in('id', productIds);
-  if (prodErr) return res.status(500).json({ error: prodErr.message });
-
-  const byShop = {};
-  for (const item of items) {
-    const product = products.find(p => p.id === Number(item.productId));
-    if (!product) return res.status(400).json({ error: 'A product in your cart is no longer available.' });
-    const qty = Math.max(1, Number(item.qty) || 1);
-    if (!byShop[product.shop_id]) byShop[product.shop_id] = [];
-    byShop[product.shop_id].push({ product, qty, size: item.size || '' });
-  }
-
-  const fee = DELIVERY_FEES[deliveryType] ?? DELIVERY_FEES.standard;
-  const createdOrders = [];
-
-  for (const shopId of Object.keys(byShop)) {
-    const lineItems = byShop[shopId];
-    const subtotal = lineItems.reduce((s, i) => s + Number(i.product.price) * i.qty, 0);
-
-    const { data: order, error } = await supabaseAdmin.from('orders').insert({
-      buyer_id: req.user.id,
-      shop_id: Number(shopId),
-      status: 'pending',
-      delivery_type: deliveryType || 'standard',
-      delivery_fee: fee,
-      subtotal,
-      total: subtotal + fee,
-      address: address || '',
-      city: city || '',
-      area: area || '',
-      phone: phone || req.user.phone || '',
-      payment_method: paymentMethod || 'card',
-      note: note || '',
-      items: lineItems.map(i => ({
-        productId: i.product.id,
-        name: i.product.name,
-        price: Number(i.product.price),
-        qty: i.qty,
-        size: i.size,
-        emoji: i.product.emoji,
-        imageUrl: i.product.image_url || null,
-      })),
-    }).select().single();
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    for (const i of lineItems) {
-      const newStock = Math.max(0, (i.product.stock || 0) - i.qty);
-      await supabaseAdmin.from('products').update({ stock: newStock, sold: (i.product.sold || 0) + i.qty }).eq('id', i.product.id);
-    }
-
-    createdOrders.push(orderOut(order));
-  }
-
-  res.json({ orders: createdOrders });
 });
 
 router.get('/mine', requireAuth, async (req, res) => {
@@ -134,7 +59,31 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
   const allowedStatuses = ['pending', 'processing', 'delivered', 'cancelled'];
   if (!allowedStatuses.includes(req.body.status)) return res.status(400).json({ error: 'Invalid status.' });
 
-  const { data: updated, error } = await supabaseAdmin.from('orders').update({ status: req.body.status }).eq('id', order.id).select().single();
+  const patch = { status: req.body.status };
+
+  // Marking a paid order "delivered" starts the 3-day escrow countdown.
+  // Pay-on-Delivery orders never went through online payment, so there's
+  // no held money to release — their payout_status stays 'not_ready'.
+  if (req.body.status === 'delivered') {
+    patch.delivered_at = new Date().toISOString();
+    if (order.payment_status === 'paid') patch.payout_status = 'pending';
+  }
+
+  const { data: updated, error } = await supabaseAdmin.from('orders').update(patch).eq('id', order.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ order: orderOut(updated) });
+});
+
+// Buyer disputes a delivered order — freezes the escrow release. Real
+// dispute handling (support review, refund path) is a future feature;
+// for now this just stops the automatic 3-day payout so a human can look.
+router.post('/:id/dispute', requireAuth, async (req, res) => {
+  const { data: order } = await supabaseAdmin.from('orders').select('*').eq('id', Number(req.params.id)).maybeSingle();
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  if (order.buyer_id !== req.user.id) return res.status(403).json({ error: 'Not your order.' });
+  if (order.payout_status === 'released') return res.status(400).json({ error: 'This order has already been paid out and can no longer be disputed here — please contact support.' });
+
+  const { data: updated, error } = await supabaseAdmin.from('orders').update({ disputed: true }).eq('id', order.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json({ order: orderOut(updated) });
 });

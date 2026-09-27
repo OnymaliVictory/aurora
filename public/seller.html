@@ -98,8 +98,26 @@
         <div class="kpi-card" style="--kpi-color:var(--aurora-pink)"><div class="kpi-icon">📊</div><div class="kpi-value" id="earn-week">₦0</div><div class="kpi-label">This Week</div></div>
       </div>
       <div class="dash-panel" style="margin-top:18px">
-        <div class="panel-header"><span class="panel-title">Payouts</span></div>
-        <p style="font-size:13px;color:var(--text-dim);padding:8px 0 16px">Automatic bank payouts aren't set up yet — this is a preview of what you've earned so far. Payout scheduling is on the roadmap.</p>
+        <div class="panel-header"><span class="panel-title">Payout Account</span></div>
+        <div id="payout-connected-view" style="display:none;padding:8px 0">
+          <div style="display:flex;align-items:center;gap:10px;color:var(--aurora-green);font-size:13.5px;margin-bottom:6px">✓ Payout account connected</div>
+          <div style="font-size:13px;color:var(--text-muted)"><span id="payout-bank-name"></span> · <span id="payout-account-number"></span></div>
+          <div style="font-size:12px;color:var(--text-dim);margin-top:2px">Account name: <span id="payout-account-name"></span></div>
+          <p style="font-size:12px;color:var(--text-dim);margin-top:10px">Money from delivered orders is held for 3 days (in case of a dispute), then paid to this account automatically.</p>
+        </div>
+        <div id="payout-setup-view" style="padding:8px 0">
+          <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:14px">Add your bank account so Aurora can pay you automatically — money from each order releases 3 days after it's marked delivered.</p>
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:380px">
+            <div class="form-group"><label class="form-label">Bank</label>
+              <select class="form-select" id="payout-bank-select"><option value="">Loading banks…</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Account Number</label>
+              <input class="form-input" id="payout-account-input" maxlength="10" placeholder="0123456789">
+            </div>
+            <div id="payout-error" class="form-hint" style="color:#ff6b6b;display:none"></div>
+            <button class="btn-primary" style="align-self:flex-start" id="payout-save-btn" onclick="savePayoutAccount()">Verify &amp; Save</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -199,7 +217,7 @@ function showSellerView(view, el){
   if(el) el.classList.add('active');
   closeSidebar();
   if (view === 'orders') renderAllOrders();
-  if (view === 'earnings') renderEarnings();
+  if (view === 'earnings') { renderEarnings(); loadPayoutAccount(); }
   if (view === 'analytics') renderAnalytics();
   if (view === 'messages') loadConversations();
 }
@@ -356,6 +374,19 @@ function renderRecentOrders(){
   }).join('');
 }
 
+function payoutStatusBadge(o){
+  if (o.paymentMethod === 'pod') return `<span class="order-status" style="background:rgba(232,244,255,.1);color:var(--text-dim)">Pay on delivery</span>`;
+  if (o.paymentStatus !== 'paid') return `<span class="order-status status-pending">Awaiting payment</span>`;
+  const map = {
+    not_ready: { cls: 'status-processing', label: 'Paid · held' },
+    pending: { cls: 'status-processing', label: 'Releases in 3 days' },
+    released: { cls: 'status-delivered', label: 'Paid out ✓' },
+    failed: { cls: 'status-pending', label: 'Payout failed' },
+  };
+  const s = map[o.payoutStatus] || map.not_ready;
+  return `<span class="order-status ${s.cls}">${s.label}</span>`;
+}
+
 function renderAllOrders(){
   const list = document.getElementById('all-orders-list');
   if (myOrders.length === 0) { list.innerHTML = '<div class="glass-card" style="padding:24px;text-align:center;color:var(--text-dim)">No orders yet — share your shop link to start selling!</div>'; return; }
@@ -367,7 +398,10 @@ function renderAllOrders(){
       <div class="order-info" style="flex:1;margin-left:12px">
         <div class="order-name">#AUR-${o.id} · ${escapeHtml((o.items||[]).map(i=>i.name+(i.size?' ('+i.size+')':'')).join(', '))}</div>
         <div class="order-date">${escapeHtml(o.buyer?o.buyer.name:'Buyer')} · ${timeAgo(o.created_at)} · ${escapeHtml(o.area||o.city||'')}</div>
-        <div class="order-status ${orderStatusClass(o.status)}" style="margin-top:5px">${orderStatusLabel(o.status)}</div>
+        <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">
+          <span class="order-status ${orderStatusClass(o.status)}">${orderStatusLabel(o.status)}</span>
+          ${payoutStatusBadge(o)}
+        </div>
       </div>
       <div style="text-align:right">
         <div class="order-amount">${fmtNaira(o.total)}</div>
@@ -426,6 +460,68 @@ function renderEarnings(){
   document.getElementById('earn-pending').textContent = fmtNaira(pending.reduce((s,o)=>s+o.total,0));
   document.getElementById('earn-month').textContent = fmtNaira(monthOrders.reduce((s,o)=>s+o.total,0));
   document.getElementById('earn-week').textContent = fmtNaira(weekOrders.reduce((s,o)=>s+o.total,0));
+}
+
+let banksList = [];
+async function loadBanksDropdown(){
+  const sel = document.getElementById('payout-bank-select');
+  if (banksList.length) { populateBankSelect(); return; }
+  try {
+    const { banks } = await AuroraAPI.get('/payments/banks');
+    banksList = banks;
+    populateBankSelect();
+  } catch (err) {
+    sel.innerHTML = `<option value="">Could not load banks — try again later</option>`;
+  }
+}
+function populateBankSelect(){
+  const sel = document.getElementById('payout-bank-select');
+  sel.innerHTML = '<option value="">Select your bank</option>' + banksList.map(b => `<option value="${b.code}">${escapeHtml(b.name)}</option>`).join('');
+}
+
+async function loadPayoutAccount(){
+  await loadBanksDropdown();
+  try {
+    const data = await AuroraAPI.get('/payments/payout-account');
+    if (data.connected) {
+      document.getElementById('payout-connected-view').style.display = '';
+      document.getElementById('payout-setup-view').style.display = 'none';
+      document.getElementById('payout-bank-name').textContent = data.bankName;
+      document.getElementById('payout-account-number').textContent = data.accountNumber;
+      document.getElementById('payout-account-name').textContent = data.accountName;
+    } else {
+      document.getElementById('payout-connected-view').style.display = 'none';
+      document.getElementById('payout-setup-view').style.display = '';
+    }
+  } catch (err) {
+    // No shop yet, or a transient error — leave the setup form showing.
+  }
+}
+
+async function savePayoutAccount(){
+  const btn = document.getElementById('payout-save-btn');
+  const errEl = document.getElementById('payout-error');
+  errEl.style.display = 'none';
+  const select = document.getElementById('payout-bank-select');
+  const bankCode = select.value;
+  const bankName = select.selectedOptions[0] ? select.selectedOptions[0].textContent : '';
+  const accountNumber = document.getElementById('payout-account-input').value.trim();
+  if (!bankCode || !accountNumber) {
+    errEl.textContent = 'Please select a bank and enter your account number.';
+    errEl.style.display = 'block';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  try {
+    await AuroraAPI.post('/payments/payout-account', { bankCode, bankName, accountNumber });
+    showToast('✓ Payout account connected!');
+    loadPayoutAccount();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Verify & Save';
+  }
 }
 
 function renderAnalytics(){

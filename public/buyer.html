@@ -319,6 +319,11 @@ async function loadMyOrders(){
     const statusLabel = { pending:'Pending', processing:'In Transit', delivered:'Delivered ✓', cancelled:'Cancelled' };
     list.innerHTML = orders.map(o => {
       const thumb = (o.items&&o.items[0]&&o.items[0].imageUrl) ? `<img src="${o.items[0].imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">` : ((o.items&&o.items[0]&&o.items[0].emoji)||'📦');
+      const canDispute = o.status === 'delivered' && o.paymentStatus === 'paid' && o.payoutStatus === 'pending' && !o.disputed;
+      const paymentHint = o.paymentMethod === 'pod'
+        ? ''
+        : (o.paymentStatus !== 'paid' ? '<div style="font-size:11px;color:#fbbf24;margin-top:4px">Payment not yet confirmed</div>'
+          : o.disputed ? '<div style="font-size:11px;color:var(--aurora-pink);margin-top:4px">Dispute reported — under review</div>' : '');
       return `
       <div class="glass-card" style="padding:18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
         <div style="width:48px;height:48px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:30px">${thumb}</div>
@@ -326,14 +331,25 @@ async function loadMyOrders(){
           <div style="font-weight:600;font-size:14px;margin-bottom:3px">${escapeHtml((o.items||[]).map(i=>i.name).join(', '))}</div>
           <div style="font-size:11.5px;color:var(--text-dim)">from ${escapeHtml(o.shop?o.shop.name:'Aurora Shop')} · ordered ${timeAgo(o.created_at)}</div>
           <div style="margin-top:7px"><span class="order-status ${statusClass[o.status]}">${statusLabel[o.status]}</span></div>
+          ${paymentHint}
         </div>
         <div style="text-align:right">
           <div style="font-family:'Orbitron',sans-serif;color:var(--aurora-green);font-weight:600;font-size:13px">₦${o.total.toLocaleString()}</div>
           ${o.shop?`<a href="shop.html?slug=${o.shop.slug}" class="btn-secondary" style="margin-top:7px;font-size:11.5px;padding:5px 13px;display:inline-block">View Shop</a>`:''}
+          ${canDispute?`<button class="btn-secondary" style="margin-top:7px;font-size:11.5px;padding:5px 13px;display:block;color:var(--aurora-pink);border-color:var(--aurora-pink)" onclick="disputeOrder(${o.id})">Report a Problem</button>`:''}
         </div>
       </div>`;
     }).join('');
   } catch (err) { list.innerHTML = `<div class="glass-card" style="padding:24px;text-align:center;color:var(--text-dim)">${escapeHtml(err.message)}</div>`; }
+}
+
+async function disputeOrder(orderId){
+  if (!confirm('This flags the order so Aurora can review it and pauses the automatic payout to the seller. Continue?')) return;
+  try {
+    await AuroraAPI.post(`/orders/${orderId}/dispute`);
+    showToast('Reported — this order is now under review and the payout is on hold.');
+    loadMyOrders();
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
 async function loadBuyerConversations(){

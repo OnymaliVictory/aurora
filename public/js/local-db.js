@@ -152,11 +152,18 @@ const LocalDB = (() => {
     return shopWithComputed(db, shop);
   }
 
-  function listShops({ q, category } = {}) {
+function listShops({ q, category } = {}) {
     const db = load();
     let shops = db.shops;
     if (category && category !== 'all') shops = shops.filter(s => s.category.toLowerCase().includes(category.toLowerCase()));
-    if (q) { const needle = q.toLowerCase(); shops = shops.filter(s => s.name.toLowerCase().includes(needle) || s.category.toLowerCase().includes(needle)); }
+    if (q) {
+      const needle = q.toLowerCase();
+      shops = shops.filter(s =>
+        s.name.toLowerCase().includes(needle) ||
+        s.category.toLowerCase().includes(needle) ||
+        db.products.some(p => p.shop_id === s.id && p.name.toLowerCase().includes(needle))
+      );
+    }
     return shops.map(s => shopWithComputed(db, s)).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
 
