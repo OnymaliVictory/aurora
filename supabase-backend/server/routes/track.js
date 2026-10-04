@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const supabaseAdmin = require('../supabaseAdmin');
 
 const router = express.Router();
@@ -6,22 +7,30 @@ const router = express.Router();
 const NOT_FOUND = "We couldn't find an order with that tracking ID. Check it and try again.";
 
 // ---------- Tiny rate limiter ----------
-// Stops someone hammering this endpoint to guess tracking IDs.
 // Honest caveat: on Vercel each serverless instance has its own memory, so
-// this is a speed bump, not a wall. The real protection is that IDs are
-// long and random (about 1.1 trillion combinations).
-const hits = new Map(); // ip -> [timestamps]
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_LOOKUPS = 30;
+// this is a speed bump, not a wall. The real protection is that tracking IDs
+// are long and random (about 1.1 trillion combinations).
+const buckets = new Map(); // key -> [timestamps]
 
-function rateLimited(req) {
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+function recent(key, windowMs) {
   const now = Date.now();
-  const recent = (hits.get(ip) || []).filter(t => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  return recent.length > MAX_LOOKUPS;
+  const list = (buckets.get(key) || []).filter(t => now - t < windowMs);
+  buckets.set(key, list);
+  return list;
 }
+function addHit(key, windowMs) {
+  const list = recent(key, windowMs);
+  list.push(Date.now());
+  return list.length;
+}
+function clientIp(req) {
+  return (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+}
+
+const LOOKUP_WINDOW_MS = 10 * 60 * 1000;
+const MAX_LOOKUPS = 30;
+const CODE_WINDOW_MS = 15 * 60 * 1000;
+const MAX_BAD_CODES = 8;
 
 // Accepts "aur-7k4m-x9qp", "AUR7K4MX9QP", " AUR 7K4M X9QP " ... and returns
 // the canonical "AUR-7K4M-X9QP", or null if it can't possibly be valid.
@@ -62,7 +71,7 @@ function buildSteps(o) {
 // So it only returns what is safe for anyone holding the ID to see:
 // NO address, NO phone number, NO buyer name.
 router.get('/:trackingId', async (req, res) => {
-  if (rateLimited(req)) {
+  if (addHit('lookup:' + clientIp(req), LOOKUP_WINDOW_MS) > MAX_LOOKUPS) {
     return res.status(429).json({ error: 'Too many lookups. Please wait a few minutes and try again.' });
   }
 
@@ -91,6 +100,76 @@ router.get('/:trackingId', async (req, res) => {
       steps: buildSteps(o),
     },
   });
+});
+
+// ---------- Buyer-side chat (works for guests) ----------
+// The tracking ID alone is NOT enough to read or write messages. The buyer
+// must also send the last 4 digits of the phone number used at checkout, in
+// an "x-order-code" header. Two secrets instead of one.
+//
+// Returns the order row, or sends the error response itself and returns null.
+async function authorizeBuyerChat(req, res) {
+  const trackingId = normalizeTrackingId(req.params.trackingId);
+  if (!trackingId) { res.status(404).json({ error: NOT_FOUND }); return null; }
+
+  // Only WRONG codes count toward the limit, so normal chatting never trips it.
+  const key = `code:${clientIp(req)}:${trackingId}`;
+  if (recent(key, CODE_WINDOW_MS).length >= MAX_BAD_CODES) {
+    res.status(429).json({ error: 'Too many wrong codes. Please wait 15 minutes and try again.' });
+    return null;
+  }
+
+  const { data: order, error } = await supabaseAdmin
+    .from('orders').select('id, phone').eq('tracking_id', trackingId).maybeSingle();
+  if (error) { res.status(500).json({ error: 'Something went wrong. Please try again.' }); return null; }
+  if (!order) { res.status(404).json({ error: NOT_FOUND }); return null; }
+
+  const real = String(order.phone || '').replace(/\D/g, '').slice(-4);
+  if (real.length < 4) {
+    res.status(403).json({ error: 'This order has no phone number on file, so chat is unavailable. Please contact the seller another way.' });
+    return null;
+  }
+
+  const supplied = String(req.headers['x-order-code'] || '').replace(/\D/g, '');
+  // timingSafeEqual compares in constant time, so response speed can't leak digits.
+  const ok = supplied.length === 4 && crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(real));
+  if (!ok) {
+    addHit(key, CODE_WINDOW_MS);
+    res.status(403).json({ error: 'That code does not match this order.', needsCode: true });
+    return null;
+  }
+  return order;
+}
+
+router.get('/:trackingId/chat', async (req, res) => {
+  const order = await authorizeBuyerChat(req, res);
+  if (!order) return;
+
+  // ?after=12 means "only messages newer than id 12", so polling stays cheap.
+  const after = Number(req.query.after) || 0;
+  const { data, error } = await supabaseAdmin
+    .from('order_messages')
+    .select('id, sender_role, body, created_at')
+    .eq('order_id', order.id).eq('channel', 'seller')
+    .gt('id', after).order('id', { ascending: true }).limit(200);
+  if (error) return res.status(500).json({ error: 'Could not load messages.' });
+
+  res.json({ messages: data.map(m => ({ id: m.id, role: m.sender_role, body: m.body, createdAt: m.created_at })) });
+});
+
+router.post('/:trackingId/chat', async (req, res) => {
+  const order = await authorizeBuyerChat(req, res);
+  if (!order) return;
+
+  const body = String((req.body && req.body.body) || '').trim();
+  if (!body) return res.status(400).json({ error: 'Message cannot be empty.' });
+  if (body.length > 1000) return res.status(400).json({ error: 'Message is too long (1000 characters max).' });
+
+  const { error } = await supabaseAdmin
+    .from('order_messages')
+    .insert({ order_id: order.id, channel: 'seller', sender_role: 'buyer', body });
+  if (error) return res.status(500).json({ error: 'Could not send your message.' });
+  res.json({ ok: true });
 });
 
 module.exports = router;

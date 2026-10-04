@@ -66,6 +66,42 @@ router.get('/receipt/:trackingId', requireAuth, async (req, res) => {
   res.json({ order: orderOut(rest), shop: shops });
 });
 
+// ---------- Seller side of the order chat ----------
+// Only the owner of the shop an order belongs to may read or write its chat.
+async function loadSellerOrder(req, res) {
+  const { data: order } = await supabaseAdmin.from('orders').select('id, shop_id').eq('id', Number(req.params.id)).maybeSingle();
+  if (!order) { res.status(404).json({ error: 'Order not found.' }); return null; }
+  const { data: shop } = await supabaseAdmin.from('shops').select('owner_id').eq('id', order.shop_id).maybeSingle();
+  if (!shop || shop.owner_id !== req.user.id) { res.status(403).json({ error: 'Not your order.' }); return null; }
+  return order;
+}
+
+router.get('/:id/chat', requireAuth, async (req, res) => {
+  const order = await loadSellerOrder(req, res);
+  if (!order) return;
+  const after = Number(req.query.after) || 0;
+  const { data, error } = await supabaseAdmin
+    .from('order_messages')
+    .select('id, sender_role, body, created_at')
+    .eq('order_id', order.id).eq('channel', 'seller')
+    .gt('id', after).order('id', { ascending: true }).limit(200);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ messages: data.map(m => ({ id: m.id, role: m.sender_role, body: m.body, createdAt: m.created_at })) });
+});
+
+router.post('/:id/chat', requireAuth, async (req, res) => {
+  const order = await loadSellerOrder(req, res);
+  if (!order) return;
+  const body = String((req.body && req.body.body) || '').trim();
+  if (!body) return res.status(400).json({ error: 'Message cannot be empty.' });
+  if (body.length > 1000) return res.status(400).json({ error: 'Message is too long (1000 characters max).' });
+  const { error } = await supabaseAdmin
+    .from('order_messages')
+    .insert({ order_id: order.id, channel: 'seller', sender_role: 'seller', body });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 router.patch('/:id/status', requireAuth, async (req, res) => {
   const { data: order } = await supabaseAdmin.from('orders').select('*').eq('id', Number(req.params.id)).maybeSingle();
   if (!order) return res.status(404).json({ error: 'Order not found.' });

@@ -170,6 +170,16 @@
 </div>
 
 <!-- ADD PRODUCT MODAL -->
+ <div class="modal-overlay" id="modal-chat">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><span class="modal-title" id="chat-title">Order chat</span><button class="modal-close" onclick="closeOrderChat()">✕</button></div>
+    <div id="chat-msgs" style="height:300px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px"></div>
+    <form id="chat-form" style="display:flex;gap:8px;padding:14px 16px;border-top:1px solid var(--glass-border)">
+      <input class="form-input" id="chat-input" maxlength="1000" placeholder="Reply to the buyer…" autocomplete="off" style="flex:1;min-width:0">
+      <button class="btn-primary" type="submit">Send</button>
+    </form>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-product">
   <div class="modal modal-sm">
     <div class="modal-header"><span class="modal-title">Add New Product</span><button class="modal-close" onclick="closeModal('modal-product')">✕</button></div>
@@ -223,6 +233,63 @@ function showSellerView(view, el){
 }
 function openAddProduct(){ document.getElementById('modal-product').classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+// ---------- Order chat (seller side) ----------
+let chatOrderId = null, chatLastId = 0, chatTimer = null;
+
+function chatBubble(m) {
+  const mine = m.role === 'seller';
+  return `<div style="align-self:${mine ? 'flex-end' : 'flex-start'};max-width:80%">
+    <div style="padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.4;word-break:break-word;border:1px solid var(--glass-border);background:${mine ? 'linear-gradient(135deg,var(--aurora-green),var(--aurora-teal))' : 'var(--glass)'};color:${mine ? 'var(--on-accent-text)' : 'var(--text-primary)'}">${escapeHtml(m.body)}</div>
+    <div style="font-size:10.5px;color:var(--text-dim);margin-top:2px;text-align:${mine ? 'right' : 'left'}">${mine ? 'You' : 'Buyer'} · ${timeAgo(m.createdAt)}</div>
+  </div>`;
+}
+
+async function loadChat(initial) {
+  if (!chatOrderId) return;
+  const box = document.getElementById('chat-msgs');
+  try {
+    const { messages } = await AuroraAPI.get(`/orders/${chatOrderId}/chat?after=${chatLastId}`);
+    if (initial) box.innerHTML = '';
+    if (messages.length) {
+      document.getElementById('chat-empty')?.remove();
+      box.insertAdjacentHTML('beforeend', messages.map(chatBubble).join(''));
+      chatLastId = messages[messages.length - 1].id;
+      box.scrollTop = box.scrollHeight;
+    } else if (initial) {
+      box.innerHTML = '<div id="chat-empty" style="color:var(--text-dim);font-size:13px;margin:auto">No messages yet.</div>';
+    }
+  } catch (err) {
+    if (initial) box.innerHTML = `<div style="color:var(--aurora-pink);font-size:13px">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function openOrderChat(id) {
+  chatOrderId = id; chatLastId = 0;
+  document.getElementById('chat-title').textContent = 'Chat · #AUR-' + id;
+  document.getElementById('chat-msgs').innerHTML = '<div style="color:var(--text-dim);font-size:13px">Loading…</div>';
+  document.getElementById('modal-chat').classList.add('open');
+  loadChat(true);
+  clearInterval(chatTimer);
+  chatTimer = setInterval(() => loadChat(false), 6000); // check for new messages every 6s
+}
+
+function closeOrderChat() {
+  clearInterval(chatTimer); chatTimer = null; chatOrderId = null;
+  closeModal('modal-chat');
+}
+
+document.getElementById('chat-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const input = document.getElementById('chat-input');
+  const body = input.value.trim();
+  if (!body || !chatOrderId) return;
+  input.value = '';
+  try {
+    await AuroraAPI.post(`/orders/${chatOrderId}/chat`, { body });
+    await loadChat(false);
+  } catch (err) { input.value = body; showToast(err.message, 'error'); }
+});
 
 let selectedProductFile = null;
 
@@ -407,6 +474,7 @@ function renderAllOrders(){
         <div class="order-amount">${fmtNaira(o.total)}</div>
         ${o.status==='pending'?`<button class="btn-primary" style="margin-top:7px;font-size:12px;padding:6px 14px" onclick="updateOrderStatus(${o.id},'processing')">Start Processing</button>`:''}
         ${o.status==='processing'?`<button class="btn-primary" style="margin-top:7px;font-size:12px;padding:6px 14px" onclick="updateOrderStatus(${o.id},'delivered')">Mark Delivered</button>`:''}
+        <button class="btn-secondary" style="margin-top:7px;font-size:12px;padding:6px 14px;display:block;margin-left:auto" onclick="openOrderChat(${o.id})">💬 Chat</button>
       </div>
     </div>`;
   }).join('');
