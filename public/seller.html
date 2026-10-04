@@ -149,6 +149,10 @@
     <!-- MESSAGES VIEW -->
     <div id="sel-messages" style="display:none">
       <h2 class="page-title" style="margin-bottom:20px">Customer Messages</h2>
+            <div class="glass-card" style="margin-bottom:18px;overflow:hidden">
+        <div class="msg-list-header">Order chats</div>
+        <div id="seller-order-chats" style="max-height:240px;overflow-y:auto"><div style="padding:16px;color:var(--text-dim);font-size:13px">Loading…</div></div>
+      </div>
       <div class="msg-layout">
         <div class="msg-list">
           <div class="msg-list-header">Inbox</div>
@@ -229,7 +233,7 @@ function showSellerView(view, el){
   if (view === 'orders') renderAllOrders();
   if (view === 'earnings') { renderEarnings(); loadPayoutAccount(); }
   if (view === 'analytics') renderAnalytics();
-  if (view === 'messages') loadConversations();
+    if (view === 'messages') { loadConversations(); loadOrderChats(); }
 }
 function openAddProduct(){ document.getElementById('modal-product').classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
@@ -277,6 +281,12 @@ function openOrderChat(id) {
 function closeOrderChat() {
   clearInterval(chatTimer); chatTimer = null; chatOrderId = null;
   closeModal('modal-chat');
+}
+
+function closeOrderChat() {
+  clearInterval(chatTimer); chatTimer = null; chatOrderId = null;
+  closeModal('modal-chat');
+  loadOrderChats();
 }
 
 document.getElementById('chat-form').addEventListener('submit', async e => {
@@ -599,6 +609,37 @@ function renderAnalytics(){
   list.innerHTML = sorted.map(p => `<div class="order-row"><div style="font-size:22px">${p.emoji||'📦'}</div><div class="order-info" style="margin-left:10px"><div class="order-name">${escapeHtml(p.name)}</div><div class="order-date">${p.sold} sold</div></div><div class="order-amount">${fmtNaira(p.price*p.sold)}</div></div>`).join('');
 }
 
+// ---------- Order chats inside the Messages view ----------
+async function loadOrderChats() {
+  if (document.hidden) return; // don't poll from a background tab
+  const list = document.getElementById('seller-order-chats');
+  try {
+    const { chats } = await AuroraAPI.get('/orders/chats');
+
+    // Sidebar badge = chats where the buyer wrote last, i.e. waiting for you.
+    const waiting = chats.filter(c => c.lastRole === 'buyer').length;
+    const badge = document.getElementById('messages-badge');
+    if (waiting > 0) { badge.style.display = ''; badge.textContent = waiting; } else badge.style.display = 'none';
+
+    if (!chats.length) {
+      list.innerHTML = '<div style="padding:16px;color:var(--text-dim);font-size:13px">No order chats yet. When a buyer messages you from their tracking page, it shows up here.</div>';
+      return;
+    }
+    list.innerHTML = chats.map(c => `
+      <div class="msg-preview" onclick="openOrderChat(${c.orderId})">
+        <div class="msg-preview-avatar">📦</div>
+        <div class="msg-preview-info">
+          <div class="msg-preview-name">#AUR-${c.orderId} · ${escapeHtml(c.buyerName || 'Buyer')}${c.lastRole === 'buyer' ? ' <span class="order-status status-pending">Needs reply</span>' : ''}</div>
+          <div class="msg-preview-text">${c.lastRole === 'seller' ? 'You: ' : ''}${escapeHtml(c.lastBody)}</div>
+        </div>
+        <div class="msg-preview-time">${timeAgo(c.lastAt)}</div>
+      </div>`).join('');
+  } catch (err) {
+    if (list.textContent.includes('Loading')) list.innerHTML = `<div style="padding:16px;color:var(--aurora-pink);font-size:13px">${escapeHtml(err.message)}</div>`;
+  }
+}
+setInterval(loadOrderChats, 30000); // keep the badge fresh while the dashboard is open
+
 async function loadConversations(){
   try {
     const { conversations } = await AuroraAPI.get('/messages/conversations');
@@ -663,6 +704,7 @@ async function init(){
     renderRecentOrders();
     renderKpis();
     renderChart();
+    loadOrderChats();
   } catch (err) {
     showToast(err.message, 'error');
   }
