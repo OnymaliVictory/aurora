@@ -1,5 +1,17 @@
 const supabaseAdmin = require('./supabaseAdmin');
 
+const crypto = require('crypto');
+
+// No 0/O/1/I, so IDs are easy to read from a screenshot
+const TRACK_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function generateTrackingId() {
+  const bytes = crypto.randomBytes(8);
+  let out = '';
+  for (let i = 0; i < 8; i++) out += TRACK_ALPHABET[bytes[i] % TRACK_ALPHABET.length];
+  return `AUR-${out.slice(0, 4)}-${out.slice(4)}`; // e.g. AUR-7K4M-X9QP
+}
+
 const DELIVERY_FEES = { standard: 1500, express: 3500, pickup: 0 };
 
 function orderOut(row, extra = {}) {
@@ -8,6 +20,7 @@ function orderOut(row, extra = {}) {
     buyer_id: row.buyer_id,
     shop_id: row.shop_id,
     status: row.status,
+    trackingId: row.tracking_id,
     deliveryType: row.delivery_type,
     deliveryFee: Number(row.delivery_fee),
     subtotal: Number(row.subtotal),
@@ -71,6 +84,7 @@ async function createOrdersFromCart(buyerId, buyerPhone, data) {
       buyer_id: buyerId,
       shop_id: Number(shopId),
       status: 'pending',
+      tracking_id: generateTrackingId(),
       delivery_type: deliveryType || 'standard',
       delivery_fee: fee,
       subtotal,

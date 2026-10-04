@@ -135,6 +135,8 @@
     <div class="success-check">✓</div>
     <h2 style="font-family:'Cinzel Decorative',serif;font-size:28px;font-weight:700;margin-bottom:10px">Order Placed! 🎉</h2>
     <p style="font-size:15px;color:var(--text-muted);margin-bottom:28px" id="confirm-sub">Your order has been received.</p>
+    <div id="confirm-tracking"></div>
+<p style="font-size:12.5px;color:var(--text-dim);margin:-4px auto 24px;max-width:440px">Screenshot this page or copy your tracking ID. You'll need it to track your order.</p>
     <div class="glass-card" style="padding:22px;max-width:440px;margin:0 auto 28px;text-align:left">
       <div style="font-family:'Orbitron',sans-serif;font-size:9.5px;letter-spacing:2px;color:var(--text-dim);margin-bottom:12px">ORDER DETAILS</div>
       <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:8px"><span style="color:var(--text-muted)">Status</span><span class="order-status status-pending">Pending</span></div>
@@ -297,8 +299,95 @@ function finishOrder(orders){
   document.getElementById('confirm-delivery').textContent = deliveryLabel;
   const orderIds = orders.map(o => '#AUR-' + o.id).join(', ');
   document.getElementById('confirm-sub').innerHTML = `Your order <strong style="color:var(--aurora-teal)">${orderIds}</strong> has been received.`;
+  renderTrackingCards(orders);
   goCheckoutStep(4);
   showToast('🎉 Order confirmed!');
+}
+
+function renderTrackingCards(orders){
+  document.getElementById('confirm-tracking').innerHTML = orders.map(o => `
+    <div class="glass-card" style="padding:20px;max-width:440px;margin:0 auto 16px;text-align:center">
+      <div style="font-family:'Orbitron',sans-serif;font-size:9.5px;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px">YOUR TRACKING ID</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:700;letter-spacing:2px;color:var(--aurora-teal);margin-bottom:14px">${escapeHtml(o.trackingId)}</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn-secondary" style="padding:10px 16px;border-radius:12px" onclick="copyTrackingId('${escapeHtml(o.trackingId)}')">Copy ID</button>
+        <button class="btn-secondary" style="padding:10px 16px;border-radius:12px" onclick="downloadReceipt('${escapeHtml(o.trackingId)}')">Download Receipt</button>
+      </div>
+    </div>`).join('');
+}
+
+async function copyTrackingId(id){
+  try { await navigator.clipboard.writeText(id); showToast('Tracking ID copied'); }
+  catch { showToast('Could not copy. Please select and copy it manually.', 'error'); }
+}
+
+async function downloadReceipt(trackingId){
+  // Open the tab FIRST, while we're still inside the click. Browsers block
+  // pop-ups opened after an await.
+  const w = window.open('', '_blank');
+  if (!w) { showToast('Please allow pop-ups to download your receipt.', 'error'); return; }
+  w.document.write('<p style="font-family:sans-serif;padding:24px">Preparing your receipt…</p>');
+  try {
+    const { order, shop } = await AuroraAPI.get('/orders/receipt/' + encodeURIComponent(trackingId));
+    w.document.open();
+    w.document.write(buildReceiptHtml(order, shop || {}));
+    w.document.close();
+    setTimeout(() => w.print(), 400); // user picks "Save as PDF"
+  } catch (err) {
+    w.close();
+    showToast(err.message, 'error');
+  }
+}
+
+function buildReceiptHtml(order, shop){
+  const rows = (order.items || []).map(i => `
+    <tr>
+      <td>${escapeHtml(i.name)}${i.size ? ' (' + escapeHtml(i.size) + ')' : ''}</td>
+      <td class="r">${i.qty}</td>
+      <td class="r">${fmtNaira(i.price)}</td>
+      <td class="r">${fmtNaira(i.price * i.qty)}</td>
+    </tr>`).join('');
+
+  const date = new Date(order.created_at).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' });
+  const payLabel = order.paymentMethod === 'pod' ? 'Pay on delivery' : (order.paymentStatus === 'paid' ? 'Paid online' : 'Awaiting payment');
+  const deliverTo = order.deliveryType === 'pickup' ? 'Store pickup' : [order.address, order.area, order.city].filter(Boolean).join(', ');
+  const shopAddress = [shop.address, shop.area, shop.city].filter(Boolean).join(', ');
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Aurora receipt ${escapeHtml(order.trackingId)}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:680px;margin:0 auto;padding:32px}
+  h1{margin:0;font-size:22px;letter-spacing:3px}
+  .muted{color:#666;font-size:13px}
+  .track{margin:20px 0;padding:14px 18px;border:2px dashed #0aa;border-radius:10px;text-align:center}
+  .track b{display:block;font-size:24px;letter-spacing:3px;margin:4px 0}
+  .cols{display:flex;gap:24px;margin-bottom:20px}
+  .cols div{flex:1;font-size:13.5px;line-height:1.55}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:9px 6px;border-bottom:1px solid #ddd;text-align:left}
+  .r{text-align:right}
+  .totals td{border:none;padding:4px 6px}
+  .grand td{font-weight:700;font-size:16px;border-top:2px solid #111}
+</style></head><body>
+  <h1>✦ AURORA</h1>
+  <div class="muted">Receipt · ${escapeHtml(date)}</div>
+  <div class="track"><span class="muted">TRACKING ID</span><b>${escapeHtml(order.trackingId)}</b><span class="muted">Order #AUR-${order.id}</span></div>
+  <div class="cols">
+    <div><strong>Sold by</strong><br>${escapeHtml(shop.name || 'Aurora seller')}<br>${escapeHtml(shopAddress)}<br>${escapeHtml(shop.phone || '')}</div>
+    <div><strong>Delivered to</strong><br>${escapeHtml(currentUser.first_name + ' ' + currentUser.last_name)}<br>${escapeHtml(deliverTo)}<br>${escapeHtml(order.phone || '')}</div>
+  </div>
+  <table>
+    <tr><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr>
+    ${rows}
+  </table>
+  <table class="totals">
+    <tr><td class="r">Subtotal</td><td class="r" style="width:110px">${fmtNaira(order.subtotal)}</td></tr>
+    <tr><td class="r">Delivery</td><td class="r">${fmtNaira(order.deliveryFee)}</td></tr>
+    <tr class="grand"><td class="r">Total</td><td class="r">${fmtNaira(order.total)}</td></tr>
+  </table>
+  <p class="muted">Payment: ${payLabel} · Delivery: ${escapeHtml(order.deliveryType)}</p>
+  <p class="muted">Keep this receipt. Use your tracking ID to follow your order on Aurora.</p>
+</body></html>`;
 }
 
 async function init(){

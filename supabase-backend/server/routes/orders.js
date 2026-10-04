@@ -50,6 +50,22 @@ router.get('/shop', requireAuth, async (req, res) => {
   res.json({ orders });
 });
 
+// Everything a receipt needs, looked up by tracking ID.
+// Returns 404 (not 403) for someone else's order so IDs can't be probed.
+router.get('/receipt/:trackingId', requireAuth, async (req, res) => {
+  const { data: order } = await supabaseAdmin
+    .from('orders')
+    .select('*, shops(name, phone, address, area, city)')
+    .eq('tracking_id', req.params.trackingId.toUpperCase())
+    .maybeSingle();
+
+  if (!order || order.buyer_id !== req.user.id) {
+    return res.status(404).json({ error: 'Order not found.' });
+  }
+  const { shops, ...rest } = order;
+  res.json({ order: orderOut(rest), shop: shops });
+});
+
 router.patch('/:id/status', requireAuth, async (req, res) => {
   const { data: order } = await supabaseAdmin.from('orders').select('*').eq('id', Number(req.params.id)).maybeSingle();
   if (!order) return res.status(404).json({ error: 'Order not found.' });
