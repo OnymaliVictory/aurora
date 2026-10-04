@@ -4,12 +4,38 @@
 <script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>Aurora — Support Desk</title>
+<title>Aurora — Admin</title>
 <link rel="stylesheet" href="css/style.css">
 <style>
-  .adm-tabs{display:flex;gap:8px;margin:14px 0}
-  .adm-tab{padding:8px 16px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer}
-  .adm-tab.active{border-color:var(--aurora-teal);color:var(--aurora-teal)}
+  .adm-tabs{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+  .adm-tab,.adm-chip{padding:8px 16px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer}
+  .adm-chip{padding:6px 12px;font-size:12px}
+  .adm-tab.active,.adm-chip.active{border-color:var(--aurora-teal);color:var(--aurora-teal)}
+  .adm-pane{display:none}.adm-pane.active{display:block}
+  .adm-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+  .adm-kpi{padding:16px}.adm-kpi .n{font-size:24px;font-weight:700;color:var(--text-primary)}.adm-kpi .l{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .adm-kpi.warn .n{color:var(--aurora-pink)}
+  .adm-bars{display:flex;align-items:flex-end;gap:10px;height:120px;padding:8px 4px 0}
+  .adm-bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:var(--text-muted)}
+  .adm-bar i{display:block;width:100%;max-width:38px;background:var(--aurora-teal);border-radius:6px 6px 0 0;min-height:2px}
+  .adm-table-wrap{overflow-x:auto;margin-top:10px}
+  .adm-table{width:100%;border-collapse:collapse;font-size:13px}
+  .adm-table th{text-align:left;color:var(--text-muted);font-weight:600;font-size:12px;padding:8px 10px;border-bottom:1px solid var(--glass-border);white-space:nowrap}
+  .adm-table td{padding:10px;border-bottom:1px solid var(--glass-border);vertical-align:middle}
+  .adm-table tr.click{cursor:pointer}.adm-table tr.click:hover td{background:var(--glass)}
+  .adm-bar-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
+  .adm-search{flex:1;min-width:200px;padding:9px 14px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-primary);font-size:13px}
+  .adm-badge{display:inline-block;padding:2px 9px;border-radius:50px;font-size:11px;font-weight:600;border:1px solid var(--glass-border);color:var(--text-muted);white-space:nowrap}
+  .adm-badge.good{color:var(--aurora-teal);border-color:var(--aurora-teal)}.adm-badge.bad{color:var(--aurora-pink);border-color:var(--aurora-pink)}
+  .adm-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 12px}
+  .adm-modal.open{display:flex}
+  .adm-modal-box{width:100%;max-width:640px;padding:22px;position:relative}
+  .adm-x{position:absolute;top:10px;right:14px;background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer}
+  .adm-dl{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:13px;margin:12px 0}
+  .adm-dl dt{color:var(--text-muted)}.adm-dl dd{margin:0;word-break:break-word}
+  .adm-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .adm-danger{border-color:var(--aurora-pink);color:var(--aurora-pink)}
+  .adm-sub-h{font-size:14px;font-weight:700;margin:18px 0 6px}
   .adm-info{font-size:11px;color:var(--text-muted);margin-top:2px}
   .adm-head-btn{margin-left:auto;padding:8px 14px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-primary);font-size:12.5px;font-weight:600;cursor:pointer;flex-shrink:0}
   .adm-head-btn:hover{border-color:var(--aurora-teal);color:var(--aurora-teal)}
@@ -35,37 +61,100 @@
 </nav>
 
 <div style="max-width:1100px;margin:92px auto 40px;padding:0 16px">
-  <h2 class="page-title">Support Desk</h2>
-  <p style="font-size:13.5px;color:var(--text-muted)">Tickets that buyers open from the Aurora assistant.</p>
+  <h2 class="page-title">Admin</h2>
+  <p style="font-size:13.5px;color:var(--text-muted)">Orders, disputes, shops, users and support in one place.</p>
 
   <div id="adm-gate" class="glass-card adm-gate" style="display:none"></div>
 
   <div id="adm-app" style="display:none">
-    <div class="adm-tabs">
-      <button class="adm-tab active" id="tab-open" onclick="setStatus('open')">Open (0)</button>
-      <button class="adm-tab" id="tab-resolved" onclick="setStatus('resolved')">Resolved (0)</button>
+    <div class="adm-tabs" id="main-tabs">
+      <button class="adm-tab active" data-tab="overview" onclick="showTab('overview')">Overview</button>
+      <button class="adm-tab" data-tab="orders" onclick="showTab('orders')">Orders</button>
+      <button class="adm-tab" data-tab="disputes" onclick="showTab('disputes')" id="tab-disputes">Disputes</button>
+      <button class="adm-tab" data-tab="shops" onclick="showTab('shops')">Shops</button>
+      <button class="adm-tab" data-tab="users" onclick="showTab('users')">Users</button>
+      <button class="adm-tab" data-tab="support" onclick="showTab('support')" id="tab-support">Support</button>
     </div>
-    <div class="msg-layout" id="adm-layout">
-      <div class="msg-list">
-        <div class="msg-list-header">Tickets</div>
-        <div class="msg-list-items" id="adm-list"><div class="adm-empty">Loading…</div></div>
+
+    <!-- OVERVIEW -->
+    <div class="adm-pane active" id="pane-overview">
+      <div class="adm-kpis" id="kpis"><div class="adm-empty">Loading…</div></div>
+      <div class="glass-card" style="padding:16px;margin-bottom:16px">
+        <div class="adm-sub-h" style="margin-top:0">Orders in the last 7 days</div>
+        <div class="adm-bars" id="bars"></div>
       </div>
-      <div class="msg-chat">
-        <div class="msg-chat-header">
-          <button class="adm-back" onclick="backToList()">← Tickets</button>
-          <div style="min-width:0">
-            <div class="msg-chat-title" id="adm-title">Select a ticket</div>
-            <div class="adm-info" id="adm-sub"></div>
+      <div class="glass-card" style="padding:16px">
+        <div class="adm-sub-h" style="margin-top:0">Latest orders</div>
+        <div class="adm-table-wrap" id="recent-orders"></div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="adm-pane" id="pane-orders">
+      <div class="adm-bar-tools">
+        <input class="adm-search" id="order-q" placeholder="Search by order number or tracking ID…" onkeydown="if(event.key==='Enter')loadOrders()">
+        <button class="adm-head-btn" style="margin-left:0" onclick="loadOrders()">Search</button>
+      </div>
+      <div class="adm-bar-tools" id="order-filters"></div>
+      <div class="adm-table-wrap" id="orders-table"></div>
+    </div>
+
+    <!-- DISPUTES -->
+    <div class="adm-pane" id="pane-disputes">
+      <p style="font-size:13px;color:var(--text-muted);margin:10px 0">Orders a buyer has disputed. The seller's payout is frozen until you decide.</p>
+      <div class="adm-table-wrap" id="disputes-table"></div>
+      <div class="adm-sub-h">Recent admin actions</div>
+      <div id="audit-list"></div>
+    </div>
+
+    <!-- SHOPS -->
+    <div class="adm-pane" id="pane-shops"><div class="adm-table-wrap" id="shops-table"></div></div>
+
+    <!-- USERS -->
+    <div class="adm-pane" id="pane-users">
+      <div class="adm-bar-tools">
+        <input class="adm-search" id="user-q" placeholder="Search by name, email or phone…" onkeydown="if(event.key==='Enter')loadUsers()">
+        <button class="adm-head-btn" style="margin-left:0" onclick="loadUsers()">Search</button>
+      </div>
+      <div class="adm-table-wrap" id="users-table"></div>
+    </div>
+
+    <!-- SUPPORT -->
+    <div class="adm-pane" id="pane-support">
+      <div class="adm-tabs">
+        <button class="adm-chip active" id="tab-open" onclick="setStatus('open')">Open (0)</button>
+        <button class="adm-chip" id="tab-resolved" onclick="setStatus('resolved')">Resolved (0)</button>
+      </div>
+      <div class="msg-layout" id="adm-layout">
+        <div class="msg-list">
+          <div class="msg-list-header">Tickets</div>
+          <div class="msg-list-items" id="adm-list"><div class="adm-empty">Loading…</div></div>
+        </div>
+        <div class="msg-chat">
+          <div class="msg-chat-header">
+            <button class="adm-back" onclick="backToList()">← Tickets</button>
+            <div style="min-width:0">
+              <div class="msg-chat-title" id="adm-title">Select a ticket</div>
+              <div class="adm-info" id="adm-sub"></div>
+            </div>
+            <button class="adm-head-btn" id="adm-status-btn" style="display:none" onclick="toggleStatus()">Mark resolved</button>
           </div>
-          <button class="adm-head-btn" id="adm-status-btn" style="display:none" onclick="toggleStatus()">Mark resolved</button>
-        </div>
-        <div class="msg-chat-messages" id="adm-msgs"></div>
-        <div class="msg-chat-input">
-          <input class="msg-input" id="adm-input" maxlength="1000" placeholder="Reply to the buyer…" autocomplete="off" onkeydown="if(event.key==='Enter')sendReply()">
-          <button class="msg-send-btn" onclick="sendReply()">Send</button>
+          <div class="msg-chat-messages" id="adm-msgs"></div>
+          <div class="msg-chat-input">
+            <input class="msg-input" id="adm-input" maxlength="1000" placeholder="Reply to the buyer…" autocomplete="off" onkeydown="if(event.key==='Enter')sendReply()">
+            <button class="msg-send-btn" onclick="sendReply()">Send</button>
+          </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ORDER DETAIL -->
+<div class="adm-modal" id="order-modal" onclick="if(event.target===this)closeOrder()">
+  <div class="glass-card adm-modal-box">
+    <button class="adm-x" onclick="closeOrder()" aria-label="Close">×</button>
+    <div id="order-detail"></div>
   </div>
 </div>
 
@@ -79,15 +168,170 @@
 let status = 'open', tickets = [], counts = { open: 0, resolved: 0 };
 let active = null, lastMsgId = 0, threadTimer = null, listTimer = null;
 const $ = id => document.getElementById(id);
-const fmtNaira = n => '₦' + Math.round(n).toLocaleString();
+const fmtNaira = n => '₦' + Math.round(Number(n) || 0).toLocaleString();
 const ORDER_LABEL = { pending: 'Pending', processing: 'Processing', delivered: 'Delivered', cancelled: 'Cancelled' };
+const e = v => escapeHtml(String(v == null ? '' : v));
+const dateOf = d => d ? new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+const GATE = '<h3 style="margin-bottom:8px">Admins only</h3><p style="color:var(--text-muted);font-size:14px">This account does not have access to the admin area.</p>';
+let tab = 'overview', orderFilter = { status: '', payment: '', disputed: '' };
 
-function showGate(html) {
-  $('adm-app').style.display = 'none';
-  $('adm-gate').style.display = '';
-  $('adm-gate').innerHTML = html;
+function showGate(html) { $('adm-app').style.display = 'none'; $('adm-gate').style.display = ''; $('adm-gate').innerHTML = html; }
+function fail(err, target) {
+  if (/admins only/i.test(err.message)) return showGate(GATE);
+  if (target) target.innerHTML = `<div class="adm-empty" style="color:var(--aurora-pink)">${e(err.message)}</div>`;
+}
+function badge(id, label, n) { const b = $(id); if (b) b.textContent = n ? `${label} (${n})` : label; }
+function table(heads, rows, empty) {
+  if (!rows.length) return `<div class="adm-empty">${empty}</div>`;
+  return `<table class="adm-table"><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+}
+const statusBadge = o => {
+  const cls = o.status === 'delivered' ? 'good' : o.status === 'cancelled' ? 'bad' : '';
+  return `<span class="adm-badge ${cls}">${e(ORDER_LABEL[o.status] || o.status)}</span>`;
+};
+const payBadge = o => `<span class="adm-badge ${o.paymentStatus === 'paid' ? 'good' : o.paymentStatus === 'refunded' || o.paymentStatus === 'failed' ? 'bad' : ''}">${e(o.paymentStatus)}</span>`;
+
+// ---------- tabs ----------
+function showTab(t) {
+  tab = t;
+  document.querySelectorAll('#main-tabs .adm-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('.adm-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + t));
+  if (t === 'overview') loadOverview();
+  if (t === 'orders') loadOrders();
+  if (t === 'disputes') loadDisputes();
+  if (t === 'shops') loadShops();
+  if (t === 'users') loadUsers();
+  if (t === 'support') loadTickets();
 }
 
+// ---------- overview ----------
+async function loadOverview() {
+  try {
+    const [{ stats: s }, { orders }] = await Promise.all([AuroraAPI.get('/admin/stats'), AuroraAPI.get('/admin/orders')]);
+    const k = (n, l, cls) => `<div class="glass-card adm-kpi ${cls || ''}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+    $('kpis').innerHTML =
+      k(fmtNaira(s.money.gmv), 'Paid sales (total)') + k(fmtNaira(s.money.commission), 'Aurora commission') +
+      k(fmtNaira(s.money.pendingPayouts), 'Owed to sellers') + k(fmtNaira(s.money.released), 'Paid out to sellers') +
+      k(s.orders.total, `Orders · ${s.orders.pending} pending`) + k(s.orders.delivered, 'Delivered') +
+      k(s.disputes, 'Open disputes', s.disputes ? 'warn' : '') + k(s.tickets.open, 'Open support tickets', s.tickets.open ? 'warn' : '') +
+      k(s.users.total, `Users · ${s.users.sellers} sellers`) + k(s.shops, 'Shops') + k(s.products, 'Products');
+    const max = Math.max(1, ...s.daily.map(d => d.orders));
+    $('bars').innerHTML = s.daily.map(d => `<div class="adm-bar" title="${e(d.day)}"><span>${d.orders}</span><i style="height:${Math.round(d.orders / max * 80)}px"></i><span>${e(d.day.slice(5))}</span></div>`).join('');
+    $('recent-orders').innerHTML = orderTable(orders.slice(0, 8));
+    badge('tab-disputes', 'Disputes', s.disputes); badge('tab-support', 'Support', s.tickets.open);
+  } catch (err) { fail(err, $('kpis')); }
+}
+
+// ---------- orders ----------
+function orderTable(orders) {
+  return table(['Order', 'Date', 'Shop', 'Buyer', 'Total', 'Status', 'Payment', ''], orders.map(o => `
+    <tr class="click" onclick="openOrder(${o.id})">
+      <td>#AUR-${o.id}</td><td>${e(dateOf(o.createdAt))}</td><td>${e(o.shopName || '—')}</td><td>${e(o.buyerName)}</td>
+      <td>${fmtNaira(o.total)}</td><td>${statusBadge(o)}</td><td>${payBadge(o)}</td>
+      <td>${o.disputed ? '<span class="adm-badge bad">Disputed</span>' : ''}</td></tr>`), 'No orders found.');
+}
+function renderFilters() {
+  const chip = (label, key, val) => `<button class="adm-chip${orderFilter[key] === val ? ' active' : ''}" onclick="setFilter('${key}','${val}')">${label}</button>`;
+  $('order-filters').innerHTML =
+    chip('All', 'status', '') + chip('Pending', 'status', 'pending') + chip('Processing', 'status', 'processing') + chip('Delivered', 'status', 'delivered') + chip('Cancelled', 'status', 'cancelled') +
+    '<span style="width:10px"></span>' + chip('Any payment', 'payment', '') + chip('Paid', 'payment', 'paid') + chip('Unpaid', 'payment', 'unpaid') + chip('Refunded', 'payment', 'refunded') +
+    '<span style="width:10px"></span>' + chip('Disputed only', 'disputed', '1');
+}
+function setFilter(key, val) { orderFilter[key] = (key === 'disputed' && orderFilter[key] === '1') ? '' : val; loadOrders(); }
+async function loadOrders() {
+  renderFilters();
+  const p = new URLSearchParams();
+  Object.entries(orderFilter).forEach(([k, v]) => v && p.set(k, v));
+  const q = $('order-q').value.trim(); if (q) p.set('q', q);
+  try { const { orders } = await AuroraAPI.get('/admin/orders?' + p); $('orders-table').innerHTML = orderTable(orders); }
+  catch (err) { fail(err, $('orders-table')); }
+}
+
+// ---------- order detail ----------
+let openOrderId = null;
+function closeOrder() { $('order-modal').classList.remove('open'); openOrderId = null; }
+async function openOrder(id) {
+  openOrderId = id;
+  $('order-modal').classList.add('open');
+  $('order-detail').innerHTML = '<div class="adm-empty">Loading…</div>';
+  try {
+    const { order: o, audit } = await AuroraAPI.get('/admin/orders/' + id);
+    if (openOrderId !== id) return;
+    const row = (l, v) => `<dt>${l}</dt><dd>${v}</dd>`;
+    const canResolve = o.disputed && o.payoutStatus !== 'released';
+    $('order-detail').innerHTML = `
+      <h3 style="margin:0 0 4px">Order #AUR-${o.id} ${o.disputed ? '<span class="adm-badge bad">Disputed</span>' : ''}</h3>
+      <div class="adm-info">${e(o.trackingId || 'no tracking ID')} · ${e(dateOf(o.createdAt))}</div>
+      <dl class="adm-dl">
+        ${row('Status', statusBadge(o))}${row('Payment', payBadge(o) + ' · ' + e(o.paymentMethod))}
+        ${row('Payout', e(o.payoutStatus))}${row('Shop', e(o.shopName || '—'))}
+        ${row('Buyer', e(o.buyerName) + (o.buyerEmail ? ' · ' + e(o.buyerEmail) : ''))}${row('Phone', e(o.phone || '—'))}
+        ${row('Deliver to', e([o.address, o.area, o.city].filter(Boolean).join(', ') || '—') + ' (' + e(o.deliveryType) + ')')}
+        ${o.note ? row('Buyer note', e(o.note)) : ''}
+        ${row('Subtotal', fmtNaira(o.subtotal))}${row('Delivery', fmtNaira(o.deliveryFee))}${row('Total', '<b>' + fmtNaira(o.total) + '</b>')}
+        ${row('Commission', o.commission == null ? '—' : fmtNaira(o.commission))}${row('Seller gets', o.payout == null ? '—' : fmtNaira(o.payout))}
+        ${row('Paystack ref', e(o.paystackReference || '—'))}${row('Paid', e(dateOf(o.paidAt)))}${row('Delivered', e(dateOf(o.deliveredAt)))}${row('Paid out', e(dateOf(o.releasedAt)))}
+      </dl>
+      <div class="adm-sub-h">Items</div>
+      ${o.items.map(i => `<div style="font-size:13px;padding:4px 0">${e(i.emoji)} ${e(i.name)}${i.size ? ' (' + e(i.size) + ')' : ''} × ${e(i.qty)} — ${fmtNaira(i.price * i.qty)}</div>`).join('') || '<div class="adm-empty">No items.</div>'}
+      ${canResolve ? `
+        <div class="adm-sub-h">Resolve dispute</div>
+        <input class="adm-search" id="resolve-note" style="width:100%" maxlength="300" placeholder="Note for the record (e.g. Paystack refund reference)">
+        <div class="adm-act">
+          <button class="adm-head-btn" style="margin-left:0" onclick="resolveDispute(${o.id},'dismiss')">Dismiss complaint</button>
+          ${o.paymentStatus === 'paid' ? `<button class="adm-head-btn adm-danger" style="margin-left:0" onclick="resolveDispute(${o.id},'refunded')">Mark refunded</button>` : ''}
+        </div>
+        <p class="adm-info" style="margin-top:8px"><b>Dismiss</b> unfreezes the seller's payout. <b>Mark refunded</b> only <u>records</u> a refund and cancels the payout — send the money back from your Paystack dashboard first. This page never moves money.</p>` : ''}
+      ${audit.length ? `<div class="adm-sub-h">History</div>${audit.map(a => `<div class="adm-info">${e(dateOf(a.createdAt))} · ${e(a.action.replace('dispute_', 'dispute '))}${a.detail ? ' — ' + e(a.detail) : ''}</div>`).join('')}` : ''}
+    `;
+  } catch (err) { fail(err, $('order-detail')); }
+}
+async function resolveDispute(id, action) {
+  const msg = action === 'refunded'
+    ? 'Confirm: you have ALREADY refunded this buyer in Paystack? This cancels the seller\'s payout.'
+    : 'Dismiss this complaint and let the seller\'s payout continue as normal?';
+  if (!confirm(msg)) return;
+  try {
+    await AuroraAPI.post(`/admin/orders/${id}/resolve-dispute`, { action, note: $('resolve-note').value.trim() });
+    showToast(action === 'refunded' ? '✓ Marked as refunded' : '✓ Complaint dismissed');
+    closeOrder();
+    if (tab === 'disputes') loadDisputes(); else if (tab === 'orders') loadOrders(); else loadOverview();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- disputes ----------
+async function loadDisputes() {
+  try {
+    const [{ orders }, { audit }] = await Promise.all([AuroraAPI.get('/admin/disputes'), AuroraAPI.get('/admin/audit')]);
+    badge('tab-disputes', 'Disputes', orders.length);
+    $('disputes-table').innerHTML = table(['Order', 'Date', 'Shop', 'Buyer', 'Total', 'Payment', 'Payout'], orders.map(o => `
+      <tr class="click" onclick="openOrder(${o.id})"><td>#AUR-${o.id}</td><td>${e(dateOf(o.createdAt))}</td><td>${e(o.shopName || '—')}</td><td>${e(o.buyerName)}</td><td>${fmtNaira(o.total)}</td><td>${payBadge(o)}</td><td>${e(o.payoutStatus)}</td></tr>`), 'No open disputes. 🎉');
+    $('audit-list').innerHTML = audit.length ? audit.map(a => `<div class="adm-info" style="padding:3px 0">${e(dateOf(a.createdAt))} · ${e(a.adminName)} · ${e(a.action.replace('_', ' '))}${a.orderId ? ' · #AUR-' + a.orderId : ''}${a.detail ? ' — ' + e(a.detail) : ''}</div>`).join('') : '<div class="adm-empty">Nothing yet.</div>';
+  } catch (err) { fail(err, $('disputes-table')); }
+}
+
+// ---------- shops ----------
+async function loadShops() {
+  try {
+    const { shops } = await AuroraAPI.get('/admin/shops');
+    $('shops-table').innerHTML = table(['Shop', 'Owner', 'City', 'Products', 'Orders', 'Paid sales', 'Payout set up', 'Created'], shops.map(s => `
+      <tr><td>${e(s.name)}<div class="adm-info">${e(s.category || '')}</div></td><td>${e(s.ownerName || '—')}<div class="adm-info">${e(s.ownerEmail || '')}</div></td><td>${e(s.city || '—')}</td>
+      <td>${s.products}</td><td>${s.orders}</td><td>${fmtNaira(s.paidTotal)}</td>
+      <td><span class="adm-badge ${s.payoutReady ? 'good' : 'bad'}">${s.payoutReady ? 'Yes' : 'No'}</span></td><td>${e(dateOf(s.createdAt))}</td></tr>`), 'No shops yet.');
+  } catch (err) { fail(err, $('shops-table')); }
+}
+
+// ---------- users ----------
+async function loadUsers() {
+  try {
+    const { users } = await AuroraAPI.get('/admin/users?q=' + encodeURIComponent($('user-q').value.trim()));
+    $('users-table').innerHTML = table(['Name', 'Email', 'Phone', 'Role', 'City', 'Joined', 'Last sign-in'], users.map(u => `
+      <tr><td>${e(u.name || '—')}</td><td>${e(u.email)}</td><td>${e(u.phone || '—')}</td>
+      <td><span class="adm-badge ${u.role === 'admin' ? 'bad' : u.role === 'seller' ? 'good' : ''}">${e(u.role)}</span></td><td>${e(u.city || '—')}</td><td>${e(dateOf(u.createdAt))}</td><td>${e(dateOf(u.lastSignInAt))}</td></tr>`), 'No users match.');
+  } catch (err) { fail(err, $('users-table')); }
+}
+
+// ---------- support (unchanged logic) ----------
 function renderTabs() {
   $('tab-open').textContent = `Open (${counts.open})`;
   $('tab-resolved').textContent = `Resolved (${counts.resolved})`;
@@ -117,13 +361,13 @@ async function loadTickets() {
   try {
     const data = await AuroraAPI.get('/admin/tickets?status=' + status);
     tickets = data.tickets; counts = data.counts;
-    renderTabs(); renderList();
+    renderTabs(); renderList(); badge('tab-support','Support',counts.open);
     if (active) { // keep the open ticket's header in sync (status, etc.)
       const fresh = tickets.find(t => t.orderId === active.orderId);
       if (fresh) { active = fresh; renderHeader(); }
     }
   } catch (err) {
-    if (/admins only/i.test(err.message)) showGate('<h3 style="margin-bottom:8px">Admins only</h3><p style="color:var(--text-muted);font-size:14px">This account does not have access to the support desk.</p>');
+    if (/admins only/i.test(err.message)) showGate(GATE);
     else if ($('adm-list').textContent.includes('Loading')) $('adm-list').innerHTML = `<div class="adm-empty" style="color:var(--aurora-pink)">${escapeHtml(err.message)}</div>`;
   }
 }
@@ -207,13 +451,12 @@ async function init() {
   if (!user) return;
   // This check is only for a friendly page. The real protection is on the server:
   // every /api/admin route refuses anyone who is not an admin.
-  if (user.role !== 'admin') {
-    showGate('<h3 style="margin-bottom:8px">Admins only</h3><p style="color:var(--text-muted);font-size:14px">This account does not have access to the support desk.</p>');
-    return;
-  }
+  if (user.role !== 'admin') { showGate(GATE); return; }
   $('adm-app').style.display = '';
-  await loadTickets();
-  listTimer = setInterval(loadTickets, 20000);
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeOrder(); });
+  const h = (location.hash || '').slice(1);
+  showTab(['overview', 'orders', 'disputes', 'shops', 'users', 'support'].includes(h) ? h : 'overview');
+  listTimer = setInterval(() => { if (tab === 'support') loadTickets(); else if (tab === 'overview') loadOverview(); }, 20000);
 }
 init();
 </script>

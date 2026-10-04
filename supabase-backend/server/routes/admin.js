@@ -120,4 +120,180 @@ router.patch('/tickets/:orderId', async (req, res) => {
   res.json({ ok: true, status: data.status });
 });
 
+// ============================================================
+// DASHBOARD
+// ============================================================
+
+// ---------- Overview numbers (counted inside the database) ----------
+router.get('/stats', async (req, res) => {
+  const { data, error } = await supabaseAdmin.rpc('admin_stats');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ stats: data });
+});
+
+// ---------- Users ----------
+// ?q=text searches email, name or phone.
+router.get('/users', async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 60);
+  const { data, error } = await supabaseAdmin.rpc('admin_list_users', { search: q, lim: 100 });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({
+    users: data.map(u => ({
+      id: u.id, email: u.email, name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+      phone: u.phone || '', role: u.role, city: u.city || '',
+      createdAt: u.created_at, lastSignInAt: u.last_sign_in_at,
+    })),
+  });
+});
+
+// ---------- Shops ----------
+router.get('/shops', async (req, res) => {
+  const { data, error } = await supabaseAdmin.rpc('admin_list_shops');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({
+    shops: data.map(s => ({
+      id: s.id, name: s.name, slug: s.slug, category: s.category, city: s.city,
+      ownerName: s.owner_name, ownerEmail: s.owner_email,
+      products: Number(s.products), orders: Number(s.orders), paidTotal: Number(s.paid_total),
+      payoutReady: !!s.payout_ready, createdAt: s.created_at,
+    })),
+  });
+});
+
+// ---------- Orders ----------
+const ORDER_COLS = 'id, tracking_id, status, payment_status, payment_method, payout_status, disputed, total, commission_amount, payout_amount, delivery_type, created_at, shop_id, buyer_id, phone';
+
+async function namesFor(orders) {
+  const shopIds = [...new Set(orders.map(o => o.shop_id).filter(Boolean))];
+  const buyerIds = [...new Set(orders.map(o => o.buyer_id).filter(Boolean))];
+  const [{ data: shops }, { data: buyers }] = await Promise.all([
+    shopIds.length ? supabaseAdmin.from('shops').select('id, name').in('id', shopIds) : { data: [] },
+    buyerIds.length ? supabaseAdmin.from('profiles').select('id, first_name, last_name').in('id', buyerIds) : { data: [] },
+  ]);
+  return {
+    shopName: id => { const s = (shops || []).find(x => x.id === id); return s ? s.name : null; },
+    buyerName: id => { const b = (buyers || []).find(x => x.id === id); return b ? `${b.first_name} ${b.last_name}`.trim() : 'Guest'; },
+  };
+}
+
+const orderRow = (o, n) => ({
+  id: o.id, trackingId: o.tracking_id || null, status: o.status,
+  paymentStatus: o.payment_status, paymentMethod: o.payment_method, payoutStatus: o.payout_status,
+  disputed: !!o.disputed, total: Number(o.total), commission: o.commission_amount != null ? Number(o.commission_amount) : null,
+  payout: o.payout_amount != null ? Number(o.payout_amount) : null,
+  createdAt: o.created_at, shopName: n.shopName(o.shop_id), buyerName: n.buyerName(o.buyer_id),
+});
+
+// ?status= &payment= &disputed=1 &q=(order number or tracking ID)
+router.get('/orders', async (req, res) => {
+  let query = supabaseAdmin.from('orders').select(ORDER_COLS).order('id', { ascending: false }).limit(100);
+
+  if (['pending', 'processing', 'delivered', 'cancelled'].includes(req.query.status)) query = query.eq('status', req.query.status);
+  if (['unpaid', 'paid', 'refunded', 'failed'].includes(req.query.payment)) query = query.eq('payment_status', req.query.payment);
+  if (req.query.disputed === '1') query = query.eq('disputed', true);
+
+  const q = String(req.query.q || '').trim();
+  if (q) {
+    const asNumber = Number(q.replace(/^#?(AUR-)?/i, ''));
+    const tid = q.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (tid.length === 11 && tid.startsWith('AUR')) query = query.eq('tracking_id', `AUR-${tid.slice(3, 7)}-${tid.slice(7)}`);
+    else if (Number.isInteger(asNumber) && asNumber > 0) query = query.eq('id', asNumber);
+    else return res.json({ orders: [] }); // nothing else is searchable here
+  }
+
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  const n = await namesFor(data);
+  res.json({ orders: data.map(o => orderRow(o, n)) });
+});
+
+// One order in full. Admins may see the address and phone (needed to settle problems).
+router.get('/orders/:orderId', async (req, res) => {
+  const orderId = orderIdOf(req);
+  if (!orderId) return res.status(400).json({ error: 'Bad order id.' });
+  const { data: o, error } = await supabaseAdmin.from('orders').select('*').eq('id', orderId).maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!o) return res.status(404).json({ error: 'Order not found.' });
+
+  const n = await namesFor([o]);
+  let buyerEmail = null;
+  if (o.buyer_id) {
+    const { data: u } = await supabaseAdmin.auth.admin.getUserById(o.buyer_id);
+    buyerEmail = u && u.user ? u.user.email : null;
+  }
+  const { data: audit } = await supabaseAdmin.from('admin_audit')
+    .select('id, action, detail, created_at').eq('order_id', orderId).order('id', { ascending: false }).limit(20);
+
+  res.json({
+    order: {
+      ...orderRow(o, n),
+      subtotal: Number(o.subtotal), deliveryFee: Number(o.delivery_fee), deliveryType: o.delivery_type,
+      address: o.address, city: o.city, area: o.area, phone: o.phone, note: o.note,
+      buyerEmail, paystackReference: o.paystack_reference || null,
+      paidAt: o.paid_at, deliveredAt: o.delivered_at, releasedAt: o.released_at,
+      items: (o.items || []).map(i => ({ name: i.name, qty: i.qty, price: Number(i.price) || 0, size: i.size || '', emoji: i.emoji || '' })),
+    },
+    audit: (audit || []).map(a => ({ id: a.id, action: a.action, detail: a.detail, createdAt: a.created_at })),
+  });
+});
+
+// ---------- Disputes ----------
+router.get('/disputes', async (req, res) => {
+  const { data, error } = await supabaseAdmin.from('orders').select(ORDER_COLS)
+    .eq('disputed', true).neq('payout_status', 'released').order('id', { ascending: false }).limit(100);
+  if (error) return res.status(500).json({ error: error.message });
+  const n = await namesFor(data);
+  res.json({ orders: data.map(o => orderRow(o, n)) });
+});
+
+// action 'dismiss'  -> the complaint is rejected; the normal payout schedule resumes.
+// action 'refunded' -> you have refunded the buyer in the Paystack dashboard;
+//                      this only RECORDS it and stops the seller's payout.
+// This route never moves money by itself.
+router.post('/orders/:orderId/resolve-dispute', async (req, res) => {
+  const orderId = orderIdOf(req);
+  if (!orderId) return res.status(400).json({ error: 'Bad order id.' });
+  const action = req.body && req.body.action;
+  if (!['dismiss', 'refunded'].includes(action)) return res.status(400).json({ error: 'Action must be dismiss or refunded.' });
+  const note = String((req.body && req.body.note) || '').trim().slice(0, 300);
+
+  const { data: o, error } = await supabaseAdmin.from('orders').select('id, disputed, payment_status, payout_status').eq('id', orderId).maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!o) return res.status(404).json({ error: 'Order not found.' });
+  if (!o.disputed) return res.status(400).json({ error: 'This order is not under dispute.' });
+  if (o.payout_status === 'released') return res.status(400).json({ error: 'The seller has already been paid for this order, so it cannot be changed here.' });
+  if (action === 'refunded' && o.payment_status !== 'paid') return res.status(400).json({ error: 'Only a paid order can be marked refunded.' });
+
+  const changes = action === 'dismiss'
+    ? { disputed: false }
+    : { disputed: false, payment_status: 'refunded', payout_status: 'not_ready' };
+
+  // The extra .eq filters make this safe even if two admins click at once,
+  // or the payout cron runs between our check and this update.
+  const { data: updated, error: uErr } = await supabaseAdmin.from('orders').update(changes)
+    .eq('id', orderId).eq('disputed', true).neq('payout_status', 'released').select('id').maybeSingle();
+  if (uErr) return res.status(500).json({ error: uErr.message });
+  if (!updated) return res.status(409).json({ error: 'This order changed while you were looking at it. Reload and check again.' });
+
+  const { error: aErr } = await supabaseAdmin.from('admin_audit')
+    .insert({ admin_id: req.user.id, action: action === 'dismiss' ? 'dispute_dismissed' : 'dispute_refunded', order_id: orderId, detail: note });
+  if (aErr) console.error('[admin] audit log failed for order', orderId, aErr.message); // the change itself already succeeded
+  res.json({ ok: true });
+});
+
+// ---------- Recent admin actions ----------
+router.get('/audit', async (req, res) => {
+  const { data, error } = await supabaseAdmin.from('admin_audit')
+    .select('id, admin_id, action, order_id, detail, created_at').order('id', { ascending: false }).limit(30);
+  if (error) return res.status(500).json({ error: error.message });
+  const ids = [...new Set(data.map(a => a.admin_id))];
+  const { data: admins } = ids.length ? await supabaseAdmin.from('profiles').select('id, first_name, last_name').in('id', ids) : { data: [] };
+  res.json({
+    audit: data.map(a => {
+      const p = (admins || []).find(x => x.id === a.admin_id);
+      return { id: a.id, action: a.action, orderId: a.order_id, detail: a.detail, createdAt: a.created_at, adminName: p ? `${p.first_name} ${p.last_name}`.trim() : 'Admin' };
+    }),
+  });
+});
+
 module.exports = router;
