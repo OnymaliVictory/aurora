@@ -141,6 +141,9 @@ async function authorizeBuyerChat(req, res) {
   return order;
 }
 
+// ?channel=support talks to Aurora support; anything else talks to the seller.
+const channelOf = req => (req.query.channel === 'support' ? 'support' : 'seller');
+
 router.get('/:trackingId/chat', async (req, res) => {
   const order = await authorizeBuyerChat(req, res);
   if (!order) return;
@@ -150,7 +153,7 @@ router.get('/:trackingId/chat', async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('order_messages')
     .select('id, sender_role, body, created_at')
-    .eq('order_id', order.id).eq('channel', 'seller')
+    .eq('order_id', order.id).eq('channel', channelOf(req))
     .gt('id', after).order('id', { ascending: true }).limit(200);
   if (error) return res.status(500).json({ error: 'Could not load messages.' });
 
@@ -165,10 +168,19 @@ router.post('/:trackingId/chat', async (req, res) => {
   if (!body) return res.status(400).json({ error: 'Message cannot be empty.' });
   if (body.length > 1000) return res.status(400).json({ error: 'Message is too long (1000 characters max).' });
 
+  const channel = channelOf(req);
   const { error } = await supabaseAdmin
     .from('order_messages')
-    .insert({ order_id: order.id, channel: 'seller', sender_role: 'buyer', body });
+    .insert({ order_id: order.id, channel, sender_role: 'buyer', body });
   if (error) return res.status(500).json({ error: 'Could not send your message.' });
+
+  // A buyer writing to support opens the ticket, or reopens it if it was resolved.
+  if (channel === 'support') {
+    const { error: tErr } = await supabaseAdmin
+      .from('support_tickets')
+      .upsert({ order_id: order.id, status: 'open', updated_at: new Date().toISOString() }, { onConflict: 'order_id' });
+    if (tErr) return res.status(500).json({ error: 'Your message was sent, but the ticket could not be opened. Please try again.' });
+  }
   res.json({ ok: true });
 });
 

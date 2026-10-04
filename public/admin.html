@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Aurora — Support Desk</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .adm-tabs{display:flex;gap:8px;margin:14px 0}
+  .adm-tab{padding:8px 16px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer}
+  .adm-tab.active{border-color:var(--aurora-teal);color:var(--aurora-teal)}
+  .adm-info{font-size:11px;color:var(--text-muted);margin-top:2px}
+  .adm-head-btn{margin-left:auto;padding:8px 14px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-primary);font-size:12.5px;font-weight:600;cursor:pointer;flex-shrink:0}
+  .adm-head-btn:hover{border-color:var(--aurora-teal);color:var(--aurora-teal)}
+  .adm-back{display:none;background:none;border:none;color:var(--aurora-teal);font-size:13px;cursor:pointer;padding:0 6px 0 0}
+  .adm-empty{padding:18px;color:var(--text-dim);font-size:13px}
+  .adm-gate{max-width:480px;margin:60px auto;padding:28px;text-align:center}
+  @media (max-width:900px){
+    .adm-back{display:inline-block}
+    #adm-layout.viewing .msg-list{display:none}
+    #adm-layout:not(.viewing) .msg-chat{display:none}
+  }
+</style>
+</head>
+<body data-no-bot>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="seller.html" class="nav-link">Seller Hub</a>
+    <a href="buyer.html" class="nav-link">Marketplace</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+</nav>
+
+<div style="max-width:1100px;margin:92px auto 40px;padding:0 16px">
+  <h2 class="page-title">Support Desk</h2>
+  <p style="font-size:13.5px;color:var(--text-muted)">Tickets that buyers open from the Aurora assistant.</p>
+
+  <div id="adm-gate" class="glass-card adm-gate" style="display:none"></div>
+
+  <div id="adm-app" style="display:none">
+    <div class="adm-tabs">
+      <button class="adm-tab active" id="tab-open" onclick="setStatus('open')">Open (0)</button>
+      <button class="adm-tab" id="tab-resolved" onclick="setStatus('resolved')">Resolved (0)</button>
+    </div>
+    <div class="msg-layout" id="adm-layout">
+      <div class="msg-list">
+        <div class="msg-list-header">Tickets</div>
+        <div class="msg-list-items" id="adm-list"><div class="adm-empty">Loading…</div></div>
+      </div>
+      <div class="msg-chat">
+        <div class="msg-chat-header">
+          <button class="adm-back" onclick="backToList()">← Tickets</button>
+          <div style="min-width:0">
+            <div class="msg-chat-title" id="adm-title">Select a ticket</div>
+            <div class="adm-info" id="adm-sub"></div>
+          </div>
+          <button class="adm-head-btn" id="adm-status-btn" style="display:none" onclick="toggleStatus()">Mark resolved</button>
+        </div>
+        <div class="msg-chat-messages" id="adm-msgs"></div>
+        <div class="msg-chat-input">
+          <input class="msg-input" id="adm-input" maxlength="1000" placeholder="Reply to the buyer…" autocomplete="off" onkeydown="if(event.key==='Enter')sendReply()">
+          <button class="msg-send-btn" onclick="sendReply()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+let status = 'open', tickets = [], counts = { open: 0, resolved: 0 };
+let active = null, lastMsgId = 0, threadTimer = null, listTimer = null;
+const $ = id => document.getElementById(id);
+const fmtNaira = n => '₦' + Math.round(n).toLocaleString();
+const ORDER_LABEL = { pending: 'Pending', processing: 'Processing', delivered: 'Delivered', cancelled: 'Cancelled' };
+
+function showGate(html) {
+  $('adm-app').style.display = 'none';
+  $('adm-gate').style.display = '';
+  $('adm-gate').innerHTML = html;
+}
+
+function renderTabs() {
+  $('tab-open').textContent = `Open (${counts.open})`;
+  $('tab-resolved').textContent = `Resolved (${counts.resolved})`;
+  $('tab-open').classList.toggle('active', status === 'open');
+  $('tab-resolved').classList.toggle('active', status === 'resolved');
+}
+
+function renderList() {
+  const list = $('adm-list');
+  if (!tickets.length) {
+    list.innerHTML = `<div class="adm-empty">${status === 'open' ? 'No open tickets. 🎉' : 'Nothing resolved yet.'}</div>`;
+    return;
+  }
+  list.innerHTML = tickets.map(t => `
+    <div class="msg-preview${active && active.orderId === t.orderId ? ' active' : ''}" onclick="openTicket(${t.orderId})">
+      <div class="msg-preview-avatar">🛟</div>
+      <div class="msg-preview-info">
+        <div class="msg-preview-name">#AUR-${t.orderId} · ${escapeHtml(t.buyerName)}${t.lastRole === 'buyer' && t.ticketStatus === 'open' ? ' <span class="order-status status-pending">Needs reply</span>' : ''}</div>
+        <div class="msg-preview-text">${t.lastRole === 'support' ? 'You: ' : ''}${escapeHtml(t.lastBody)}</div>
+      </div>
+      <div class="msg-preview-time">${timeAgo(t.lastAt)}</div>
+    </div>`).join('');
+}
+
+async function loadTickets() {
+  if (document.hidden) return;
+  try {
+    const data = await AuroraAPI.get('/admin/tickets?status=' + status);
+    tickets = data.tickets; counts = data.counts;
+    renderTabs(); renderList();
+    if (active) { // keep the open ticket's header in sync (status, etc.)
+      const fresh = tickets.find(t => t.orderId === active.orderId);
+      if (fresh) { active = fresh; renderHeader(); }
+    }
+  } catch (err) {
+    if (/admins only/i.test(err.message)) showGate('<h3 style="margin-bottom:8px">Admins only</h3><p style="color:var(--text-muted);font-size:14px">This account does not have access to the support desk.</p>');
+    else if ($('adm-list').textContent.includes('Loading')) $('adm-list').innerHTML = `<div class="adm-empty" style="color:var(--aurora-pink)">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function setStatus(s) {
+  status = s; active = null; clearInterval(threadTimer);
+  $('adm-layout').classList.remove('viewing');
+  $('adm-title').textContent = 'Select a ticket'; $('adm-sub').textContent = '';
+  $('adm-status-btn').style.display = 'none'; $('adm-msgs').innerHTML = '';
+  loadTickets();
+}
+
+function renderHeader() {
+  const t = active;
+  $('adm-title').textContent = `#AUR-${t.orderId} · ${t.trackingId || 'no tracking ID'}`;
+  $('adm-sub').textContent = [t.shopName, t.buyerName, t.phone, ORDER_LABEL[t.orderStatus] || t.orderStatus, t.total != null ? fmtNaira(t.total) : ''].filter(Boolean).join(' · ');
+  const btn = $('adm-status-btn');
+  btn.style.display = '';
+  btn.textContent = t.ticketStatus === 'open' ? 'Mark resolved' : 'Reopen';
+}
+
+function bubble(m) {
+  const mine = m.role === 'support';
+  return `<div class="msg-bubble ${mine ? 'me' : 'them'}"><div>${escapeHtml(m.body)}</div><div class="msg-time">${mine ? 'You' : 'Buyer'} · ${timeAgo(m.createdAt)}</div></div>`;
+}
+
+async function pollThread(initial) {
+  if (!active) return;
+  const orderId = active.orderId, box = $('adm-msgs');
+  try {
+    const { messages } = await AuroraAPI.get(`/admin/tickets/${orderId}/chat?after=${lastMsgId}`);
+    if (!active || active.orderId !== orderId) return; // user switched tickets meanwhile
+    if (initial) box.innerHTML = '';
+    if (messages.length) {
+      box.insertAdjacentHTML('beforeend', messages.map(bubble).join(''));
+      lastMsgId = messages[messages.length - 1].id;
+      box.scrollTop = box.scrollHeight;
+    }
+  } catch (err) { if (initial) box.innerHTML = `<div class="adm-empty" style="color:var(--aurora-pink)">${escapeHtml(err.message)}</div>`; }
+}
+
+function openTicket(orderId) {
+  active = tickets.find(t => t.orderId === orderId); if (!active) return;
+  lastMsgId = 0;
+  $('adm-layout').classList.add('viewing');
+  $('adm-msgs').innerHTML = '<div class="adm-empty">Loading…</div>';
+  renderHeader(); renderList();
+  pollThread(true);
+  clearInterval(threadTimer);
+  threadTimer = setInterval(() => { if (!document.hidden) pollThread(false); }, 5000);
+}
+
+function backToList() { $('adm-layout').classList.remove('viewing'); }
+
+async function sendReply() {
+  const input = $('adm-input'), body = input.value.trim();
+  if (!body || !active) return;
+  input.value = '';
+  try {
+    await AuroraAPI.post(`/admin/tickets/${active.orderId}/chat`, { body });
+    await pollThread(false); loadTickets();
+  } catch (err) { input.value = body; showToast(err.message, 'error'); }
+}
+
+async function toggleStatus() {
+  if (!active) return;
+  const next = active.ticketStatus === 'open' ? 'resolved' : 'open';
+  try {
+    await AuroraAPI.patch(`/admin/tickets/${active.orderId}`, { status: next });
+    showToast(next === 'resolved' ? '✓ Ticket resolved' : 'Ticket reopened');
+    active = null; clearInterval(threadTimer);
+    $('adm-title').textContent = 'Select a ticket'; $('adm-sub').textContent = '';
+    $('adm-status-btn').style.display = 'none'; $('adm-msgs').innerHTML = '';
+    $('adm-layout').classList.remove('viewing');
+    loadTickets();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function init() {
+  const user = await AuroraAuth.requireAuth();
+  if (!user) return;
+  // This check is only for a friendly page. The real protection is on the server:
+  // every /api/admin route refuses anyone who is not an admin.
+  if (user.role !== 'admin') {
+    showGate('<h3 style="margin-bottom:8px">Admins only</h3><p style="color:var(--text-muted);font-size:14px">This account does not have access to the support desk.</p>');
+    return;
+  }
+  $('adm-app').style.display = '';
+  await loadTickets();
+  listTimer = setInterval(loadTickets, 20000);
+}
+init();
+</script>
+</body></html>

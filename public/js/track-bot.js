@@ -57,8 +57,11 @@
   let pollTimer = null;
   function stopChat() { clearInterval(pollTimer); pollTimer = null; }
 
-  async function chatApi(id, code, method, body, after) {
-    const res = await fetch('/api/track/' + encodeURIComponent(id) + '/chat' + (after ? '?after=' + after : ''), {
+  async function chatApi(id, code, method, body, after, channel) {
+    const qs = new URLSearchParams();
+    if (channel === 'support') qs.set('channel', 'support');
+    if (after) qs.set('after', after);
+    const res = await fetch('/api/track/' + encodeURIComponent(id) + '/chat' + (qs.toString() ? '?' + qs : ''), {
       method,
       headers: { 'Content-Type': 'application/json', 'x-order-code': code },
       body: body ? JSON.stringify(body) : undefined,
@@ -73,21 +76,30 @@
     return data;
   }
 
-  // Puts the "Chat with seller" button under the tracking result.
+  // Puts the "Chat with seller" and "Contact support" buttons under the tracking result.
   function attachChat(root, t) {
     const slot = root.querySelector('#atk-actions');
     if (!slot) return;
-    slot.innerHTML = '<button type="button" class="atk-btn" id="atk-chat-open">💬 Chat with seller</button><div id="atk-chat"></div>';
+    slot.innerHTML = `
+      <div class="atk-row">
+        <button type="button" class="atk-btn" id="atk-chat-open">💬 Chat with seller</button>
+        <button type="button" class="atk-btn" id="atk-support-open">🛟 Contact support</button>
+      </div>
+      <div id="atk-chat"></div>`;
     const box = slot.querySelector('#atk-chat');
-    slot.querySelector('#atk-chat-open').addEventListener('click', () => {
-      if (box.innerHTML) { stopChat(); box.innerHTML = ''; return; } // click again = close
+    let open = null; // which chat is showing: 'seller', 'support' or null
+    const toggle = channel => {
+      if (open === channel) { stopChat(); box.innerHTML = ''; open = null; return; } // click again = close
+      open = channel;
       const code = getCode(t.trackingId);
-      if (code) showThread(box, t.trackingId, code);
-      else askCode(box, t.trackingId);
-    });
+      if (code) showThread(box, t.trackingId, code, channel);
+      else askCode(box, t.trackingId, channel);
+    };
+    slot.querySelector('#atk-chat-open').addEventListener('click', () => toggle('seller'));
+    slot.querySelector('#atk-support-open').addEventListener('click', () => toggle('support'));
   }
 
-  function askCode(box, id, message) {
+  function askCode(box, id, channel, message) {
     box.innerHTML = `
       <div class="atk-note ${message ? 'atk-error' : ''}">${esc(message || 'To keep your chat private, enter the last 4 digits of the phone number you used for this order.')}</div>
       <form class="atk-form" id="atk-code-form" style="margin-top:8px">
@@ -97,16 +109,18 @@
     box.querySelector('#atk-code-form').addEventListener('submit', e => {
       e.preventDefault();
       const c = box.querySelector('#atk-code').value.replace(/\D/g, '');
-      if (c.length === 4) showThread(box, id, c);
+      if (c.length === 4) showThread(box, id, c, channel);
     });
   }
 
-  function showThread(box, id, code) {
+  function showThread(box, id, code, channel) {
     stopChat();
+    const isSupport = channel === 'support';
+    const otherName = isSupport ? 'Support' : 'Seller';
     box.innerHTML = `
       <div class="atk-msgs" id="atk-msgs"><div class="atk-note">Loading…</div></div>
       <form class="atk-form" id="atk-send">
-        <input id="atk-msg" placeholder="Type a message…" maxlength="1000" autocomplete="off" style="text-transform:none;letter-spacing:0">
+        <input id="atk-msg" placeholder="${isSupport ? 'Describe your problem…' : 'Type a message…'}" maxlength="1000" autocomplete="off" style="text-transform:none;letter-spacing:0">
         <button type="submit">Send</button>
       </form>`;
     const list = box.querySelector('#atk-msgs');
@@ -114,22 +128,24 @@
 
     async function refresh() {
       try {
-        const { messages } = await chatApi(id, code, 'GET', null, lastId);
+        const { messages } = await chatApi(id, code, 'GET', null, lastId, channel);
         if (firstLoad) { list.innerHTML = ''; firstLoad = false; setCode(id, code); } // code was accepted
         if (messages.length) {
           list.querySelector('.atk-empty')?.remove();
           list.insertAdjacentHTML('beforeend', messages.map(m => `
             <div class="atk-msg ${m.role === 'buyer' ? 'mine' : 'theirs'}">
               <div class="atk-bubble">${esc(m.body)}</div>
-              <div class="atk-msg-time">${m.role === 'buyer' ? 'You' : 'Seller'} · ${esc(fmtTime(m.createdAt))}</div>
+              <div class="atk-msg-time">${m.role === 'buyer' ? 'You' : otherName} · ${esc(fmtTime(m.createdAt))}</div>
             </div>`).join(''));
           lastId = messages[messages.length - 1].id;
           list.scrollTop = list.scrollHeight;
         } else if (!list.children.length) {
-          list.innerHTML = '<div class="atk-note atk-empty">No messages yet. Say hello to the seller 👋</div>';
+          list.innerHTML = isSupport
+            ? '<div class="atk-note atk-empty">Tell us what went wrong and our support team will reply here.</div>'
+            : '<div class="atk-note atk-empty">No messages yet. Say hello to the seller 👋</div>';
         }
       } catch (err) {
-        if (err.needsCode) { stopChat(); clearCode(id); askCode(box, id, 'That code did not match. Try again.'); }
+        if (err.needsCode) { stopChat(); clearCode(id); askCode(box, id, channel, 'That code did not match. Try again.'); }
         else if (firstLoad) list.innerHTML = `<div class="atk-note atk-error">${esc(err.message)}</div>`;
       }
     }
@@ -140,7 +156,7 @@
       const body = input.value.trim();
       if (!body) return;
       input.value = '';
-      try { await chatApi(id, code, 'POST', { body }); await refresh(); }
+      try { await chatApi(id, code, 'POST', { body }, 0, channel); await refresh(); }
       catch (err) { input.value = body; notify(err.message); }
     });
 
@@ -152,7 +168,6 @@
       refresh();
     }, 6000);
   }
-
   // Wires one form + one result box together. Used by the bot AND track.html.
   function bindLookup(form, input, resultBox) {
     form.addEventListener('submit', async e => {
@@ -211,7 +226,8 @@
       .atk-note{margin-top:12px;font-size:13px;color:var(--text-muted)}
       .atk-error{color:var(--aurora-pink)}
       .atk-link{display:block;margin-top:12px;font-size:12.5px;color:var(--aurora-teal)}
-      .atk-btn{margin-top:12px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-primary);font-weight:600;cursor:pointer}
+      .atk-row{display:flex;gap:8px}
+      .atk-btn{margin-top:12px;flex:1;min-width:0;padding:10px 6px;font-size:12.5px;border-radius:10px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-primary);font-weight:600;cursor:pointer}
       .atk-btn:hover{border-color:var(--aurora-teal);color:var(--aurora-teal)}
       .atk-msgs{display:flex;flex-direction:column;gap:8px;height:210px;overflow-y:auto;margin:12px 0 10px;padding:4px}
       .atk-msg{max-width:82%}
