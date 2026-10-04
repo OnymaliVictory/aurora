@@ -152,6 +152,7 @@
 
 <div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="https://js.paystack.co/v1/inline.js"></script>
@@ -311,31 +312,34 @@ function renderTrackingCards(orders){
       <div style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:700;letter-spacing:2px;color:var(--aurora-teal);margin-bottom:14px">${escapeHtml(o.trackingId)}</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button class="btn-secondary" style="padding:10px 16px;border-radius:12px" onclick="copyTrackingId('${escapeHtml(o.trackingId)}')">Copy ID</button>
-        <button class="btn-secondary" style="padding:10px 16px;border-radius:12px" onclick="downloadReceipt('${escapeHtml(o.trackingId)}')">Download Receipt</button>
+        <button class="btn-secondary" style="padding:10px 16px;border-radius:12px" onclick="downloadReceipt('${escapeHtml(o.trackingId)}', this)">Download Receipt</button>
+        <a class="btn-secondary" style="padding:10px 16px;border-radius:12px;text-decoration:none" href="track.html?id=${encodeURIComponent(o.trackingId)}">Track Order</a>
       </div>
     </div>`).join('');
 }
 
-async function copyTrackingId(id){
-  try { await navigator.clipboard.writeText(id); showToast('Tracking ID copied'); }
-  catch { showToast('Could not copy. Please select and copy it manually.', 'error'); }
-}
-
-async function downloadReceipt(trackingId){
-  // Open the tab FIRST, while we're still inside the click. Browsers block
-  // pop-ups opened after an await.
-  const w = window.open('', '_blank');
-  if (!w) { showToast('Please allow pop-ups to download your receipt.', 'error'); return; }
-  w.document.write('<p style="font-family:sans-serif;padding:24px">Preparing your receipt…</p>');
+async function downloadReceipt(trackingId, btn){
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Preparing…';
   try {
     const { order, shop } = await AuroraAPI.get('/orders/receipt/' + encodeURIComponent(trackingId));
-    w.document.open();
-    w.document.write(buildReceiptHtml(order, shop || {}));
-    w.document.close();
-    setTimeout(() => w.print(), 400); // user picks "Save as PDF"
+
+    // Build the receipt as a detached element (never added to the page),
+    // then let html2pdf turn it into a PDF and download it directly.
+    const holder = document.createElement('div');
+    holder.innerHTML = buildReceiptHtml(order, shop || {});
+
+    await html2pdf().set({
+      margin: 8,
+      filename: 'aurora-receipt-' + order.trackingId + '.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }).from(holder.firstElementChild).save();
   } catch (err) {
-    w.close();
-    showToast(err.message, 'error');
+    showToast('Could not create the receipt: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = label;
   }
 }
 
@@ -353,22 +357,22 @@ function buildReceiptHtml(order, shop){
   const deliverTo = order.deliveryType === 'pickup' ? 'Store pickup' : [order.address, order.area, order.city].filter(Boolean).join(', ');
   const shopAddress = [shop.address, shop.area, shop.city].filter(Boolean).join(', ');
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Aurora receipt ${escapeHtml(order.trackingId)}</title>
+  // Every CSS rule starts with .aur-rcpt so it can't affect the rest of the page.
+  return `<div class="aur-rcpt">
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:680px;margin:0 auto;padding:32px}
-  h1{margin:0;font-size:22px;letter-spacing:3px}
-  .muted{color:#666;font-size:13px}
-  .track{margin:20px 0;padding:14px 18px;border:2px dashed #0aa;border-radius:10px;text-align:center}
-  .track b{display:block;font-size:24px;letter-spacing:3px;margin:4px 0}
-  .cols{display:flex;gap:24px;margin-bottom:20px}
-  .cols div{flex:1;font-size:13.5px;line-height:1.55}
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  th,td{padding:9px 6px;border-bottom:1px solid #ddd;text-align:left}
-  .r{text-align:right}
-  .totals td{border:none;padding:4px 6px}
-  .grand td{font-weight:700;font-size:16px;border-top:2px solid #111}
-</style></head><body>
+  .aur-rcpt{width:700px;box-sizing:border-box;padding:28px;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}
+  .aur-rcpt h1{margin:0;font-size:22px;letter-spacing:3px}
+  .aur-rcpt .muted{color:#666;font-size:13px}
+  .aur-rcpt .track{margin:20px 0;padding:14px 18px;border:2px dashed #0aa;border-radius:10px;text-align:center}
+  .aur-rcpt .track b{display:block;font-size:24px;letter-spacing:3px;margin:4px 0}
+  .aur-rcpt .cols{display:flex;gap:24px;margin-bottom:20px}
+  .aur-rcpt .cols div{flex:1;font-size:13.5px;line-height:1.55}
+  .aur-rcpt table{width:100%;border-collapse:collapse;font-size:14px}
+  .aur-rcpt th,.aur-rcpt td{padding:9px 6px;border-bottom:1px solid #ddd;text-align:left}
+  .aur-rcpt .r{text-align:right}
+  .aur-rcpt .totals td{border:none;padding:4px 6px}
+  .aur-rcpt .grand td{font-weight:700;font-size:16px;border-top:2px solid #111}
+</style>
   <h1>✦ AURORA</h1>
   <div class="muted">Receipt · ${escapeHtml(date)}</div>
   <div class="track"><span class="muted">TRACKING ID</span><b>${escapeHtml(order.trackingId)}</b><span class="muted">Order #AUR-${order.id}</span></div>
@@ -387,7 +391,7 @@ function buildReceiptHtml(order, shop){
   </table>
   <p class="muted">Payment: ${payLabel} · Delivery: ${escapeHtml(order.deliveryType)}</p>
   <p class="muted">Keep this receipt. Use your tracking ID to follow your order on Aurora.</p>
-</body></html>`;
+</div>`;
 }
 
 async function init(){

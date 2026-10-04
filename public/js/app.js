@@ -211,3 +211,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
   document.querySelectorAll('.theme-toggle').forEach(btn => btn.addEventListener('click', () => AuroraTheme.toggle()));
 });
+
+// Floating tracking assistant on every page (lives in js/track-bot.js)
+(function () {
+  const s = document.createElement('script');
+  s.src = 'js/track-bot.js';
+  document.head.appendChild(s);
+})();
