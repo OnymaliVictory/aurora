@@ -2,6 +2,7 @@ const express = require('express');
 const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
 const { createOrdersFromCart, orderOut } = require('../orderCreation');
+const orderNotify = require('../orderNotify');
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ router.post('/', requireAuth, async (req, res) => {
   }
   try {
     const orders = await createOrdersFromCart(req.user.id, req.user.phone, { ...req.body, paymentMethod: 'pod' });
+    await orderNotify.announceOrders(orders); // tells the seller + confirms to the buyer; never throws
     res.json({ orders: orders.map(o => orderOut(o)) });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
@@ -50,26 +52,10 @@ router.get('/shop', requireAuth, async (req, res) => {
   res.json({ orders });
 });
 
-// Everything a receipt needs, looked up by tracking ID.
-// Returns 404 (not 403) for someone else's order so IDs can't be probed.
-router.get('/receipt/:trackingId', requireAuth, async (req, res) => {
-  const { data: order } = await supabaseAdmin
-    .from('orders')
-    .select('*, shops(name, phone, address, area, city)')
-    .eq('tracking_id', req.params.trackingId.toUpperCase())
-    .maybeSingle();
-
-  if (!order || order.buyer_id !== req.user.id) {
-    return res.status(404).json({ error: 'Order not found.' });
-  }
-  const { shops, ...rest } = order;
-  res.json({ order: orderOut(rest), shop: shops });
-});
-
 // ---------- Seller side of the order chat ----------
 // Only the owner of the shop an order belongs to may read or write its chat.
 async function loadSellerOrder(req, res) {
-  const { data: order } = await supabaseAdmin.from('orders').select('id, shop_id').eq('id', Number(req.params.id)).maybeSingle();
+  const { data: order } = await supabaseAdmin.from('orders').select('id, shop_id, buyer_id, tracking_id').eq('id', Number(req.params.id)).maybeSingle();
   if (!order) { res.status(404).json({ error: 'Order not found.' }); return null; }
   const { data: shop } = await supabaseAdmin.from('shops').select('owner_id').eq('id', order.shop_id).maybeSingle();
   if (!shop || shop.owner_id !== req.user.id) { res.status(403).json({ error: 'Not your order.' }); return null; }
@@ -139,6 +125,7 @@ router.post('/:id/chat', requireAuth, async (req, res) => {
     .from('order_messages')
     .insert({ order_id: order.id, channel: 'seller', sender_role: 'seller', body });
   if (error) return res.status(500).json({ error: error.message });
+  await orderNotify.sellerToBuyer(order, body);
   res.json({ ok: true });
 });
 
@@ -163,6 +150,7 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
 
   const { data: updated, error } = await supabaseAdmin.from('orders').update(patch).eq('id', order.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  if (updated.status !== order.status) await orderNotify.announceStatus(updated);
   res.json({ order: orderOut(updated) });
 });
 

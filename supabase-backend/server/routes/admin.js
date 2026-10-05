@@ -1,6 +1,7 @@
 const express = require('express');
 const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
+const orderNotify = require('../orderNotify');
 
 const router = express.Router();
 
@@ -102,6 +103,7 @@ router.post('/tickets/:orderId/chat', async (req, res) => {
   const { error } = await supabaseAdmin.from('order_messages')
     .insert({ order_id: orderId, channel: 'support', sender_role: 'support', body });
   if (error) return res.status(500).json({ error: error.message });
+  await orderNotify.supportToBuyer(orderId, body);
   res.json({ ok: true });
 });
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const supabaseAdmin = require('../supabaseAdmin');
+const orderNotify = require('../orderNotify');
 
 const router = express.Router();
 
@@ -120,7 +121,7 @@ async function authorizeBuyerChat(req, res) {
   }
 
   const { data: order, error } = await supabaseAdmin
-    .from('orders').select('id, phone').eq('tracking_id', trackingId).maybeSingle();
+    .from('orders').select('id, phone, shop_id, buyer_id, tracking_id').eq('tracking_id', trackingId).maybeSingle();
   if (error) { res.status(500).json({ error: 'Something went wrong. Please try again.' }); return null; }
   if (!order) { res.status(404).json({ error: NOT_FOUND }); return null; }
 
@@ -180,6 +181,9 @@ router.post('/:trackingId/chat', async (req, res) => {
       .from('support_tickets')
       .upsert({ order_id: order.id, status: 'open', updated_at: new Date().toISOString() }, { onConflict: 'order_id' });
     if (tErr) return res.status(500).json({ error: 'Your message was sent, but the ticket could not be opened. Please try again.' });
+    await orderNotify.buyerToSupport(order, body);
+  } else {
+    await orderNotify.buyerToSeller(order, body);
   }
   res.json({ ok: true });
 });

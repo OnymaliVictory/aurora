@@ -2,6 +2,7 @@ const express = require('express');
 const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
 const { upload, uploadToSupabase, deleteFromSupabase } = require('../uploads');
+const { notifyMany, clip } = require('../notify');
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ function parseSizes(raw) {
 }
 
 async function shopOwnedBy(shopId, userId) {
-  const { data } = await supabaseAdmin.from('shops').select('id,owner_id').eq('id', shopId).maybeSingle();
+  const { data } = await supabaseAdmin.from('shops').select('id,owner_id,name,slug').eq('id', shopId).maybeSingle();
   return data && data.owner_id === userId ? data : null;
 }
 
@@ -81,6 +82,19 @@ router.post('/shop/:shopId', requireAuth, (req, res, next) => {
   }).select().single();
 
   if (error) { if (imageUrl) deleteFromSupabase(imageUrl); return res.status(500).json({ error: error.message }); }
+
+  // Tell everyone who follows this shop (in-app + device pop-up + email). Never blocks or breaks the upload.
+  try {
+    const { data: followers } = await supabaseAdmin.from('follows').select('buyer_id').eq('shop_id', shopId).limit(2000);
+    if (followers && followers.length) {
+      await notifyMany(followers.map(f => f.buyer_id), {
+        kind: 'new_product', dedupeKey: `shop:${shopId}:new`, url: `shop.html?slug=${encodeURIComponent(shop.slug)}`,
+        title: `${shop.name} just added something new`,
+        body: `${clip(product.name, 80)} · ₦${Math.round(Number(product.price)).toLocaleString('en-NG')}`,
+      });
+    }
+  } catch (err) { console.error('[notify] new product:', err.message); }
+
   res.json({ product: productOut(product) });
 });
 

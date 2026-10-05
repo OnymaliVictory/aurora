@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
 const { createOrdersFromCart, orderOut } = require('../orderCreation');
+const orderNotify = require('../orderNotify');
 const paystack = require('../paystack');
 
 const router = express.Router();
@@ -127,6 +128,7 @@ async function markPaid(ref) {
     }).eq('id', order.id).select().single();
     updated.push(data);
   }
+  await orderNotify.announceOrders(updated.filter(Boolean)); // payment confirmed: tell the seller, confirm to the buyer
   return updated;
 }
 

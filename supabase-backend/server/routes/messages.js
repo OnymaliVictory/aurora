@@ -1,6 +1,7 @@
 const express = require('express');
 const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
+const orderNotify = require('../orderNotify');
 
 const router = express.Router();
 
@@ -49,7 +50,7 @@ router.get('/conversations', requireAuth, async (req, res) => {
 
 router.post('/thread/:shopId', requireAuth, async (req, res) => {
   const shopId = Number(req.params.shopId);
-  const { data: shop } = await supabaseAdmin.from('shops').select('id, owner_id').eq('id', shopId).maybeSingle();
+  const { data: shop } = await supabaseAdmin.from('shops').select('id, owner_id, name').eq('id', shopId).maybeSingle();
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
 
   const { body, buyerId } = req.body || {};
@@ -68,6 +69,7 @@ router.post('/thread/:shopId', requireAuth, async (req, res) => {
   }).select().single();
 
   if (error) return res.status(500).json({ error: error.message });
+  await orderNotify.directMessage({ shop, fromSeller: isOwner, buyerId: resolvedBuyerId, text: body.trim() });
   res.json({ message });
 });
 

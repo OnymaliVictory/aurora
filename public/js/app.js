@@ -218,3 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
   s.src = 'js/track-bot.js';
   document.head.appendChild(s);
 })();
+
+// Notifications bell, follow button and cart sync (lives in js/notify.js)
+(function () {
+  const s = document.createElement('script');
+  s.src = 'js/notify.js';
+  document.head.appendChild(s);
+})();
