@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Aurora — Settings</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .st-wrap{max-width:860px;margin:92px auto 60px;padding:0 16px}
+  .st-tabs{display:flex;gap:8px;margin:16px 0;flex-wrap:wrap}
+  .st-tab{padding:8px 18px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer}
+  .st-tab.active{border-color:var(--aurora-teal);color:var(--aurora-teal)}
+  .st-pane{display:none}.st-pane.active{display:block}
+  .st-card{padding:20px;margin-bottom:16px}
+  .st-card h3{margin:0 0 4px;font-size:16px}.st-card .sub{font-size:12.5px;color:var(--text-muted);margin-bottom:14px}
+  .st-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .st-grid .full{grid-column:1/-1}
+  .st-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+  .st-ghost{padding:9px 16px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-primary);font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
+  .st-ghost:hover{border-color:var(--aurora-teal);color:var(--aurora-teal)}
+  .st-ghost.danger{color:var(--aurora-pink)}
+  .st-hint{font-size:11.5px;color:var(--text-dim)}
+  .st-days{display:flex;gap:8px;flex-wrap:wrap}
+  .st-days label,.st-check{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--glass-border);border-radius:50px}
+  .st-prev{border-radius:16px;overflow:hidden;border:1px solid var(--glass-border);margin-bottom:6px}
+  .st-prev-banner{height:130px;background:var(--deep) center/cover no-repeat;position:relative}
+  .st-prev-body{display:flex;gap:14px;align-items:center;padding:0 16px 16px;margin-top:-30px;position:relative}
+  .st-prev-logo{width:64px;height:64px;border-radius:14px;border:3px solid var(--deep);display:flex;align-items:center;justify-content:center;font-size:28px;background:var(--accent,#00ffb3) center/cover no-repeat;flex-shrink:0;overflow:hidden}
+  .st-prev-name{font-weight:700;font-size:17px}.st-prev-tag{font-size:12.5px;color:var(--text-muted)}
+  .st-prev-pill{display:inline-block;margin-top:5px;padding:3px 10px;border-radius:50px;font-size:10.5px;border:1px solid var(--accent,#00ffb3);color:var(--accent,#00ffb3)}
+  .st-colors{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .st-sw{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+  .st-sw.on{border-color:var(--text-primary)}
+  input[type=color].st-pick{width:40px;height:32px;padding:0;border:none;background:none;cursor:pointer}
+  .st-social{display:flex;align-items:center;gap:8px}.st-social span{width:92px;font-size:12.5px;color:var(--text-muted);flex-shrink:0}.st-social input{flex:1;min-width:0}
+  @media (max-width:640px){.st-grid{grid-template-columns:1fr}.st-social span{width:74px}}
+</style>
+</head>
+<body data-no-bot>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="buyer.html" class="nav-link">Marketplace</a>
+    <a href="seller.html" class="nav-link" id="nav-seller" style="display:none">Seller Hub</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+</nav>
+
+<div class="st-wrap">
+  <h2 class="page-title">Settings</h2>
+  <div id="st-app" style="display:none">
+    <div class="st-tabs" id="st-tabs">
+      <button class="st-tab active" data-tab="account" onclick="showTab('account')">Account</button>
+      <button class="st-tab" data-tab="shop" id="tab-shop" onclick="showTab('shop')" style="display:none">My shop</button>
+      <button class="st-tab" data-tab="security" onclick="showTab('security')">Password</button>
+    </div>
+
+    <!-- ACCOUNT -->
+    <div class="st-pane active" id="pane-account">
+      <div class="glass-card st-card">
+        <h3>Your details</h3><div class="sub">Used for orders and delivery. Your email can't be changed here.</div>
+        <div class="st-grid">
+          <div class="form-group"><label class="form-label">First name</label><input class="form-input" id="a-first" maxlength="40"></div>
+          <div class="form-group"><label class="form-label">Last name</label><input class="form-input" id="a-last" maxlength="40"></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="a-phone" maxlength="30" inputmode="tel"></div>
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="a-email" disabled></div>
+          <div class="form-group"><label class="form-label">City</label><input class="form-input" id="a-city" maxlength="60"></div>
+          <div class="form-group"><label class="form-label">Area</label><input class="form-input" id="a-area" maxlength="60"></div>
+        </div>
+        <div class="st-actions"><button class="btn-primary" id="a-save" onclick="saveAccount()">Save changes</button></div>
+      </div>
+      <div class="glass-card st-card">
+        <h3>Notifications</h3><div class="sub">Choose which emails you get and turn on pop-ups for this device.</div>
+        <button class="st-ghost" onclick="openNotifications()">🔔 Open notification settings</button>
+      </div>
+    </div>
+
+    <!-- SHOP -->
+    <div class="st-pane" id="pane-shop">
+      <div class="glass-card st-card">
+        <h3>How your shop looks</h3><div class="sub">This is what buyers see at the top of your shop page.</div>
+        <div class="st-prev" id="prev">
+          <div class="st-prev-banner" id="prev-banner"></div>
+          <div class="st-prev-body">
+            <div class="st-prev-logo" id="prev-logo">🏪</div>
+            <div style="min-width:0"><div class="st-prev-name" id="prev-name">Your shop</div><div class="st-prev-tag" id="prev-tag"></div><span class="st-prev-pill" id="prev-cat">Category</span></div>
+          </div>
+        </div>
+        <input type="file" id="f-banner" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="uploadImage('banner',this)">
+        <input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="uploadImage('logo',this)">
+        <div class="st-actions">
+          <button class="st-ghost" onclick="document.getElementById('f-banner').click()">🖼️ Change banner</button>
+          <button class="st-ghost danger" id="rm-banner" onclick="removeImage('banner')">Remove banner</button>
+          <button class="st-ghost" onclick="document.getElementById('f-logo').click()">📷 Change logo</button>
+          <button class="st-ghost danger" id="rm-logo" onclick="removeImage('logo')">Remove logo</button>
+        </div>
+        <div class="st-hint" style="margin-top:6px">Banner works best around 1200×400, logo square. Photos are resized for you.</div>
+        <div class="st-grid" style="margin-top:16px">
+          <div class="form-group full"><label class="form-label">Accent colour</label>
+            <div class="st-colors" id="colors"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Shop emoji (used when there's no logo)</label><input class="form-input" id="s-emoji" maxlength="8"></div>
+          <div class="form-group"><label class="form-label">Tagline</label><input class="form-input" id="s-tagline" maxlength="100" placeholder="e.g. Fresh kicks, fast delivery"></div>
+        </div>
+      </div>
+
+      <div class="glass-card st-card">
+        <h3>Shop information</h3><div class="sub">Your shop link stays the same even if you rename the shop.</div>
+        <div class="st-grid">
+          <div class="form-group"><label class="form-label">Shop name</label><input class="form-input" id="s-name" maxlength="60"></div>
+          <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="s-cat">
+            <option>👟 Footwear</option><option>👗 Fashion &amp; Clothing</option><option>💄 Beauty &amp; Skincare</option><option>📱 Electronics</option>
+            <option>🍔 Food &amp; Drinks</option><option>🏠 Home &amp; Living</option><option>📚 Books &amp; Education</option><option>⚽ Sports &amp; Fitness</option>
+            <option>🎨 Art &amp; Crafts</option><option>🌿 Organic &amp; Natural</option><option>💍 Jewelry &amp; Accessories</option><option>🐾 Pets</option><option>Other</option></select></div>
+          <div class="form-group full"><label class="form-label">About your shop</label><textarea class="form-input" id="s-desc" rows="4" maxlength="1000"></textarea></div>
+          <div class="form-group"><label class="form-label">Shop phone</label><input class="form-input" id="s-phone" maxlength="30" inputmode="tel"></div>
+          <div class="form-group"><label class="form-label">City</label><input class="form-input" id="s-city" maxlength="60"></div>
+          <div class="form-group"><label class="form-label">Area</label><input class="form-input" id="s-area" maxlength="60"></div>
+          <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="s-address" maxlength="200"></div>
+          <div class="form-group full"><label class="form-label">Open days</label><div class="st-days" id="s-days"></div></div>
+          <div class="form-group"><label class="form-label">Opens</label><input class="form-input" type="time" id="s-open"></div>
+          <div class="form-group"><label class="form-label">Closes</label><input class="form-input" type="time" id="s-close"></div>
+          <div class="form-group full"><label class="form-label">Delivery &amp; payment</label>
+            <div class="st-days">
+              <label><input type="checkbox" id="s-home"> Home delivery</label>
+              <label><input type="checkbox" id="s-pickup"> Store pickup</label>
+              <label><input type="checkbox" id="s-pod"> Pay on delivery</label>
+            </div></div>
+        </div>
+      </div>
+
+      <div class="glass-card st-card">
+        <h3>Social links</h3><div class="sub">Add an @handle or the full link. Leave blank to hide one. Buyers see these on your shop page.</div>
+        <div id="socials" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+
+      <div class="st-actions" style="margin-bottom:30px">
+        <button class="btn-primary" id="s-save" onclick="saveShop()">Save shop</button>
+        <a class="st-ghost" id="s-view" href="#" target="_blank" rel="noopener">View my shop ↗</a>
+      </div>
+    </div>
+
+    <!-- PASSWORD -->
+    <div class="st-pane" id="pane-security">
+      <div class="glass-card st-card">
+        <h3>Change password</h3><div class="sub">At least 8 characters.</div>
+        <div class="st-grid">
+          <div class="form-group full"><label class="form-label">Current password</label><input class="form-input" type="password" id="p-cur" autocomplete="current-password"></div>
+          <div class="form-group"><label class="form-label">New password</label><input class="form-input" type="password" id="p-new" autocomplete="new-password"></div>
+          <div class="form-group"><label class="form-label">Repeat new password</label><input class="form-input" type="password" id="p-new2" autocomplete="new-password"></div>
+        </div>
+        <div class="st-actions"><button class="btn-primary" id="p-save" onclick="changePassword()">Update password</button></div>
+      </div>
+    </div>
+  </div>
+  <div id="st-gate" class="glass-card st-card" style="display:none"></div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const COLORS = ['#00ffb3','#00d4ff','#7c5cff','#ff4fa3','#ffb020','#ff5c5c','#4ade80','#f472b6'];
+const SOCIALS = [['instagram','Instagram','@yourshop'],['whatsapp','WhatsApp','080… or +234…'],['tiktok','TikTok','@yourshop'],['facebook','Facebook','page name or link'],['x','X (Twitter)','@yourshop'],['youtube','YouTube','@channel or link'],['website','Website','yourshop.com']];
+let user = null, SHOP = null, color = '#00ffb3', busy = false;
+
+function showTab(t) {
+  document.querySelectorAll('.st-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('.st-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + t));
+  history.replaceState(null, '', '#' + t);
+}
+function openNotifications() { if (window.AuroraNotify) AuroraNotify.togglePanel(true); else showToast('One moment…'); }
+async function guarded(btn, fn) { // stops double-clicks and shows progress on the button
+  if (busy) return; busy = true; const label = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
+  try { await fn(); } catch (err) { showToast(err.message, 'error'); }
+  busy = false; btn.disabled = false; btn.textContent = label;
+}
+
+// ---------- account ----------
+function fillAccount() {
+  $('a-first').value = user.first_name || ''; $('a-last').value = user.last_name || ''; $('a-phone').value = user.phone || '';
+  $('a-email').value = user.email || ''; $('a-city').value = user.city || ''; $('a-area').value = user.area || '';
+}
+function saveAccount() {
+  return guarded($('a-save'), async () => {
+    const { user: u } = await AuroraAPI.patch('/auth/me', { firstName: $('a-first').value, lastName: $('a-last').value, phone: $('a-phone').value, city: $('a-city').value, area: $('a-area').value });
+    user = u; AuroraAuth._user = u; fillAccount(); showToast('✓ Details saved');
+  });
+}
+
+// ---------- password ----------
+function changePassword() {
+  return guarded($('p-save'), async () => {
+    const cur = $('p-cur').value, n1 = $('p-new').value, n2 = $('p-new2').value;
+    if (!cur) throw new Error('Enter your current password.');
+    if (n1.length < 8) throw new Error('New password must be at least 8 characters.');
+    if (n1 !== n2) throw new Error("The new passwords don't match.");
+    if (n1 === cur) throw new Error('Choose a password different from the current one.');
+    // Prove they know the current password first, so a borrowed phone can't change it.
+    const check = await supabaseClient.auth.signInWithPassword({ email: user.email, password: cur });
+    if (check.error) throw new Error('Your current password is wrong.');
+    const { error } = await supabaseClient.auth.updateUser({ password: n1 });
+    if (error) throw new Error(error.message);
+    ['p-cur', 'p-new', 'p-new2'].forEach(i => ($(i).value = ''));
+    showToast('✓ Password updated');
+  });
+}
+
+// ---------- shop: preview ----------
+function paintPreview() {
+  const accent = color;
+  $('prev').style.setProperty('--accent', accent);
+  $('prev-name').textContent = $('s-name').value || 'Your shop';
+  $('prev-tag').textContent = $('s-tagline').value;
+  $('prev-cat').textContent = $('s-cat').value || 'Category';
+  const b = $('prev-banner'); b.style.backgroundImage = SHOP.bannerUrl ? `url("${SHOP.bannerUrl}")` : `linear-gradient(135deg, ${accent}55, #02050f)`;
+  const l = $('prev-logo');
+  if (SHOP.logoUrl) { l.style.backgroundImage = `url("${SHOP.logoUrl}")`; l.textContent = ''; }
+  else { l.style.backgroundImage = 'none'; l.style.background = accent; l.textContent = $('s-emoji').value || '🏪'; }
+  $('rm-banner').style.display = SHOP.bannerUrl ? '' : 'none'; $('rm-logo').style.display = SHOP.logoUrl ? '' : 'none';
+  document.querySelectorAll('.st-sw').forEach(s => s.classList.toggle('on', s.dataset.c === accent));
+  $('c-pick').value = accent;
+}
+function setColor(c) { color = c.toLowerCase(); paintPreview(); }
+
+function buildStatic() {
+  $('colors').innerHTML = COLORS.map(c => `<button type="button" class="st-sw" data-c="${c}" style="background:${c}" aria-label="${c}" onclick="setColor('${c}')"></button>`).join('')
+    + '<input type="color" class="st-pick" id="c-pick" oninput="setColor(this.value)" title="Custom colour">';
+  $('s-days').innerHTML = DAYS.map(d => `<label><input type="checkbox" data-day="${d}"> ${d}</label>`).join('');
+  $('socials').innerHTML = SOCIALS.map(([k, label, ph]) => `<div class="st-social"><span>${label}</span><input class="form-input" data-social="${k}" maxlength="200" placeholder="${ph}"></div>`).join('');
+  ['s-name', 's-tagline', 's-emoji'].forEach(i => $(i).addEventListener('input', paintPreview));
+  $('s-cat').addEventListener('change', paintPreview);
+}
+
+function fillShop() {
+  const s = SHOP;
+  $('s-name').value = s.name || ''; $('s-tagline').value = s.tagline || ''; $('s-emoji').value = s.emoji || '🏪'; $('s-desc').value = s.description || '';
+  if (s.category && ![...$('s-cat').options].some(o => o.value === s.category || o.text === s.category)) $('s-cat').add(new Option(s.category, s.category));
+  $('s-cat').value = s.category || 'Other';
+  $('s-phone').value = s.phone || ''; $('s-city').value = s.city || ''; $('s-area').value = s.area || ''; $('s-address').value = s.address || '';
+  document.querySelectorAll('[data-day]').forEach(c => (c.checked = (s.openDays || []).includes(c.dataset.day)));
+  $('s-open').value = s.openTime || '09:00'; $('s-close').value = s.closeTime || '21:00';
+  $('s-home').checked = !!s.deliveryHome; $('s-pickup').checked = !!s.deliveryPickup; $('s-pod').checked = !!s.payOnDelivery;
+  document.querySelectorAll('[data-social]').forEach(i => (i.value = (s.socials || {})[i.dataset.social] || ''));
+  color = /^#[0-9a-f]{6}$/i.test(s.color || '') ? s.color.toLowerCase() : '#00ffb3';
+  $('s-view').href = 'shop.html?slug=' + encodeURIComponent(s.slug);
+  paintPreview();
+}
+
+function saveShop() {
+  return guarded($('s-save'), async () => {
+    const socials = {}; document.querySelectorAll('[data-social]').forEach(i => (socials[i.dataset.social] = i.value.trim()));
+    const body = {
+      name: $('s-name').value, tagline: $('s-tagline').value, emoji: $('s-emoji').value, description: $('s-desc').value, category: $('s-cat').value,
+      phone: $('s-phone').value, city: $('s-city').value, area: $('s-area').value, address: $('s-address').value,
+      openDays: [...document.querySelectorAll('[data-day]:checked')].map(c => c.dataset.day),
+      openTime: $('s-open').value, closeTime: $('s-close').value,
+      deliveryHome: $('s-home').checked, deliveryPickup: $('s-pickup').checked, payOnDelivery: $('s-pod').checked,
+      color, socials,
+    };
+    const { shop } = await AuroraAPI.patch('/shops/' + SHOP.id, body);
+    SHOP = shop; fillShop(); showToast('✓ Shop saved');
+  });
+}
+
+// ---------- shop: logo + banner ----------
+function resizeImageToBlob(file, maxDim, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(), reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that image.'));
+    reader.onload = () => {
+      img.onerror = () => reject(new Error('Could not read that image.'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) { const k = maxDim / Math.max(width, height); width = Math.round(width * k); height = Math.round(height * k); }
+        const c = document.createElement('canvas'); c.width = width; c.height = height; c.getContext('2d').drawImage(img, 0, 0, width, height);
+        c.toBlob(b => (b ? resolve(b) : reject(new Error('Could not process that image.'))), 'image/jpeg', quality);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadImage(kind, input) {
+  const file = input.files[0]; input.value = '';
+  if (!file) return;
+  if (file.size > 12 * 1024 * 1024) return showToast('Please choose an image under 12MB', 'error');
+  try {
+    showToast('Uploading…');
+    const blob = await resizeImageToBlob(file, kind === 'banner' ? 1600 : 600);
+    const fd = new FormData(); fd.append('image', blob, kind + '.jpg');
+    const { shop } = await AuroraAPI.post(`/shops/${SHOP.id}/${kind}`, fd);
+    SHOP = { ...SHOP, logoUrl: shop.logoUrl, bannerUrl: shop.bannerUrl }; paintPreview(); showToast('✓ ' + (kind === 'banner' ? 'Banner' : 'Logo') + ' updated');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function removeImage(kind) {
+  try {
+    const { shop } = await AuroraAPI.del(`/shops/${SHOP.id}/${kind}`);
+    SHOP = { ...SHOP, logoUrl: shop.logoUrl, bannerUrl: shop.bannerUrl }; paintPreview(); showToast('Removed');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- start ----------
+async function init() {
+  user = await AuroraAuth.requireAuth();
+  if (!user) return;
+  $('st-app').style.display = '';
+  buildStatic(); fillAccount();
+  if (user.role === 'seller') {
+    $('nav-seller').style.display = '';
+    try {
+      const { shop } = await AuroraAPI.get('/shops/mine');
+      if (shop) { SHOP = shop; $('tab-shop').style.display = ''; fillShop(); }
+      else { $('tab-shop').style.display = ''; $('pane-shop').innerHTML = '<div class="glass-card st-card"><h3>You have no shop yet</h3><div class="sub">Create one to start selling.</div><a class="btn-primary" href="create-shop.html">Create my shop</a></div>'; }
+    } catch (err) { showToast(err.message, 'error'); }
+  }
+  const h = (location.hash || '').slice(1);
+  if (['account', 'shop', 'security'].includes(h) && (h !== 'shop' || SHOP)) showTab(h);
+}
+init();
+</script>
+</body></html>

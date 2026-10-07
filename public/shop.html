@@ -272,6 +272,37 @@ function renderShop(){
   document.getElementById('info-payment').textContent = SHOP.payOnDelivery ? 'Card, Bank Transfer, Pay on Delivery' : 'Card, Bank Transfer';
   document.getElementById('info-phone').textContent = SHOP.phone || 'Not provided';
   document.getElementById('msg-modal-title').textContent = 'Message ' + SHOP.name;
+  applyBranding();
+}
+
+// Seller's own look: accent colour, banner, logo, tagline and social links (all set in settings.html).
+const SOCIAL_LABELS = { instagram: '📸 Instagram', whatsapp: '💬 WhatsApp', tiktok: '🎵 TikTok', facebook: '👍 Facebook', x: '𝕏 X', youtube: '▶️ YouTube', website: '🌐 Website' };
+const isHttps = u => typeof u === 'string' && /^https:\/\//i.test(u);
+function applyBranding() {
+  if (/^#[0-9a-f]{6}$/i.test(SHOP.color || '')) document.getElementById('shop-content').style.setProperty('--aurora-teal', SHOP.color);
+  if (isHttps(SHOP.bannerUrl)) {
+    const cover = document.querySelector('.shop-cover');
+    cover.style.backgroundImage = 'url(' + JSON.stringify(SHOP.bannerUrl) + ')'; cover.style.backgroundSize = 'cover'; cover.style.backgroundPosition = 'center';
+    document.getElementById('shop-cover-canvas').style.display = 'none';
+  }
+  if (isHttps(SHOP.logoUrl)) {
+    const logo = document.getElementById('shop-logo-big');
+    logo.textContent = ''; logo.style.backgroundImage = 'url(' + JSON.stringify(SHOP.logoUrl) + ')'; logo.style.backgroundSize = 'cover'; logo.style.backgroundPosition = 'center';
+  }
+  const info = document.querySelector('.shop-hero-info');
+  if (SHOP.tagline && !document.getElementById('shop-tagline')) {
+    const t = document.createElement('div'); t.id = 'shop-tagline'; t.style.cssText = 'font-size:13px;color:var(--text-muted);margin-top:4px'; t.textContent = SHOP.tagline; info.appendChild(t);
+  }
+  const links = Object.entries(SHOP.socials || {}).filter(([k, u]) => SOCIAL_LABELS[k] && isHttps(u));
+  if (links.length && !document.getElementById('shop-socials')) {
+    const row = document.createElement('div'); row.id = 'shop-socials'; row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px';
+    links.forEach(([k, u]) => {
+      const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow'; a.textContent = SOCIAL_LABELS[k];
+      a.style.cssText = 'padding:4px 11px;border-radius:50px;border:1px solid var(--glass-border);background:var(--glass);font-size:11.5px;color:var(--text-primary);text-decoration:none';
+      row.appendChild(a);
+    });
+    info.appendChild(row);
+  }
 }
 
 async function init(){
@@ -282,6 +313,8 @@ async function init(){
     const { shop } = await AuroraAPI.get(`/shops/${encodeURIComponent(key)}`);
     SHOP = shop;
     renderShop();
+    // Follow button (js/notify.js may still be loading, so wait for it if needed)
+    if (window.AuroraNotify) AuroraNotify.mountFollow(SHOP); else document.addEventListener('aurora-notify-ready', () => AuroraNotify.mountFollow(SHOP), { once: true });
     const { products } = await AuroraAPI.get(`/products/shop/${shop.id}`);
     PRODUCTS = products;
     renderProducts();

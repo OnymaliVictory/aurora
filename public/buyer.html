@@ -416,7 +416,7 @@ async function init(){
   const user = await AuroraAuth.refresh();
   if (user) {
     document.getElementById('nav-account-link').textContent = user.role === 'seller' ? 'Seller Hub' : 'My Account';
-    document.getElementById('nav-account-link').href = user.role === 'seller' ? 'seller.html' : '#';
+    document.getElementById('nav-account-link').href = user.role === 'seller' ? 'seller.html' : 'settings.html';
     document.getElementById('profile-name').textContent = `${user.first_name} ${user.last_name}`;
     document.getElementById('profile-role').textContent = 'Buyer' + (user.city ? ' · ' + user.city : '');
     document.getElementById('profile-avatar').textContent = (user.first_name||'?')[0].toUpperCase();
