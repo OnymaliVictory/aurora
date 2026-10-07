@@ -3,12 +3,11 @@ const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
 const { upload, uploadToSupabase, deleteFromSupabase } = require('../uploads');
 const { cleanShopPatch } = require('../shopSettings');
+const { safeSearch, safeSlug, str } = require('../security');
 
 const router = express.Router();
 
-function slugify(name) {
-  return String(name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
+function slugify(name) { return safeSlug(name); }
 
 // DB rows are snake_case; the frontend expects the same camelCase shape the
 // old JSON-file version used, so we translate at the boundary and leave the
@@ -55,9 +54,11 @@ async function withComputed(row) {
 }
 
 router.get('/', async (req, res) => {
-  const { q, category } = req.query;
+  // User text NEVER goes straight into a filter string (PostgREST filter injection).
+  const q = safeSearch(req.query.q);
+  const category = safeSearch(req.query.category);
   let query = supabaseAdmin.from('shops').select('*').order('created_at', { ascending: false });
-  if (category && category !== 'all') query = query.ilike('category', `%${category}%`);
+  if (category && category.toLowerCase() !== 'all') query = query.ilike('category', `%${category}%`);
   if (q) query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%`);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
@@ -88,10 +89,11 @@ router.post('/', requireAuth, async (req, res) => {
   const { data: existing } = await supabaseAdmin.from('shops').select('*').eq('owner_id', req.user.id).maybeSingle();
   if (existing) return res.status(409).json({ error: 'You already have a shop.', shop: await withComputed(existing) });
 
-  const {
-    name, category, description, color, city, area, address, phone,
-    openDays, openTime, closeTime, deliveryHome, deliveryPickup, payOnDelivery,
-  } = req.body || {};
+  const b = req.body || {};
+  const { openDays, openTime, closeTime, deliveryHome, deliveryPickup, payOnDelivery } = b;
+  const name = str(b.name, 60), category = str(b.category, 60), description = str(b.description, 1000);
+  const color = /^#[0-9a-fA-F]{6}$/.test(b.color || '') ? b.color : '';
+  const city = str(b.city, 60), area = str(b.area, 80), address = str(b.address, 200), phone = str(b.phone, 20);
 
   if (!name || !category) {
     return res.status(400).json({ error: 'Shop name and category are required.' });
@@ -107,7 +109,7 @@ router.post('/', requireAuth, async (req, res) => {
 
   const { data: shop, error } = await supabaseAdmin.from('shops').insert({
     owner_id: req.user.id,
-    name: name.trim(),
+    name,
     slug: unique,
     category,
     description: description || '',
@@ -116,9 +118,9 @@ router.post('/', requireAuth, async (req, res) => {
     area: area || '',
     address: address || '',
     phone: phone || '',
-    open_days: Array.isArray(openDays) ? openDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-    open_time: openTime || '09:00',
-    close_time: closeTime || '21:00',
+    open_days: Array.isArray(openDays) ? openDays.filter(d => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].includes(d)) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    open_time: /^\d{2}:\d{2}$/.test(openTime || '') ? openTime : '09:00',
+    close_time: /^\d{2}:\d{2}$/.test(closeTime || '') ? closeTime : '21:00',
     delivery_home: !!deliveryHome,
     delivery_pickup: !!deliveryPickup,
     pay_on_delivery: !!payOnDelivery,

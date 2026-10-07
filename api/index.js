@@ -18,14 +18,22 @@ const trackRoutes = require('../supabase-backend/server/routes/track');
 const adminRoutes = require('../supabase-backend/server/routes/admin');
 const notificationRoutes = require('../supabase-backend/server/routes/notifications');
 
+const { maskServerErrors, errorHandler, rateLimit } = require('../supabase-backend/server/security');
+
 const app = express();
+app.set('trust proxy', 1); // Vercel sits in front: req.ip must be the real visitor, not the proxy
 
 // The Paystack webhook needs the RAW request body to verify its signature.
 // This has to run before express.json() below, and only for this one path —
 // otherwise express.json() would consume and parse the body first, and
 // signature verification would fail on every webhook call.
 app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
+app.use(maskServerErrors);
+// Global speed bump + a tighter one on endpoints attackers like to hammer.
+app.use('/api', rateLimit({ windowMs: 60_000, max: 240 }));
+app.use('/api/track', rateLimit({ windowMs: 60_000, max: 30 }));   // tracking-ID + phone guessing
+app.use('/api/shops', rateLimit({ windowMs: 60_000, max: 120 }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/shops', shopRoutes);
@@ -39,6 +47,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));
+
+app.use(errorHandler);
 
 // An Express app is itself a valid (req, res) request handler, which is
 // exactly what Vercel's Node runtime expects — no extra wrapping needed.
