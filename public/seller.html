@@ -35,7 +35,7 @@
     <div class="sidebar-item" onclick="showToast('Promotions coming soon!')"><span class="s-icon">📣</span>Promotions</div>
     <div class="sidebar-item" onclick="showSellerView('analytics',this)"><span class="s-icon">📈</span>Analytics</div>
     <div class="sidebar-item" onclick="showSellerView('reviews',this)"><span class="s-icon">⭐</span>Reviews</div>
-    <div class="sidebar-item" onclick="showToast('Settings coming soon!')"><span class="s-icon">⚙️</span>Settings</div>
+    <div class="sidebar-item" onclick="location.href='settings.html#shop'"><span class="s-icon">⚙️</span>Settings</div>
     <div class="sidebar-item" onclick="AuroraAuth.logout()"><span class="s-icon">🚪</span>Log Out</div>
     <div class="user-profile-mini">
       <div class="avatar" id="sidebar-avatar" style="background:linear-gradient(135deg,var(--aurora-purple),var(--aurora-pink))">?</div>
@@ -149,7 +149,7 @@
     <!-- MESSAGES VIEW -->
     <div id="sel-messages" style="display:none">
       <h2 class="page-title" style="margin-bottom:20px">Customer Messages</h2>
-            <div class="glass-card" style="margin-bottom:18px;overflow:hidden">
+      <div class="glass-card" style="margin-bottom:18px;overflow:hidden">
         <div class="msg-list-header">Order chats</div>
         <div id="seller-order-chats" style="max-height:240px;overflow-y:auto"><div style="padding:16px;color:var(--text-dim);font-size:13px">Loading…</div></div>
       </div>
@@ -174,7 +174,7 @@
 </div>
 
 <!-- ADD PRODUCT MODAL -->
- <div class="modal-overlay" id="modal-chat">
+<div class="modal-overlay" id="modal-chat">
   <div class="modal" style="max-width:520px">
     <div class="modal-header"><span class="modal-title" id="chat-title">Order chat</span><button class="modal-close" onclick="closeOrderChat()">✕</button></div>
     <div id="chat-msgs" style="height:300px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px"></div>
@@ -184,6 +184,7 @@
     </form>
   </div>
 </div>
+
 <div class="modal-overlay" id="modal-product">
   <div class="modal modal-sm">
     <div class="modal-header"><span class="modal-title">Add New Product</span><button class="modal-close" onclick="closeModal('modal-product')">✕</button></div>
@@ -233,7 +234,7 @@ function showSellerView(view, el){
   if (view === 'orders') renderAllOrders();
   if (view === 'earnings') { renderEarnings(); loadPayoutAccount(); }
   if (view === 'analytics') renderAnalytics();
-    if (view === 'messages') { loadConversations(); loadOrderChats(); }
+  if (view === 'messages') { loadConversations(); loadOrderChats(); }
 }
 function openAddProduct(){ document.getElementById('modal-product').classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
@@ -281,11 +282,6 @@ function openOrderChat(id) {
 function closeOrderChat() {
   clearInterval(chatTimer); chatTimer = null; chatOrderId = null;
   closeModal('modal-chat');
-}
-
-function closeOrderChat() {
-  clearInterval(chatTimer); chatTimer = null; chatOrderId = null;
-  closeModal('modal-chat');
   loadOrderChats();
 }
 
@@ -300,6 +296,7 @@ document.getElementById('chat-form').addEventListener('submit', async e => {
     await loadChat(false);
   } catch (err) { input.value = body; showToast(err.message, 'error'); }
 });
+
 
 let selectedProductFile = null;
 
