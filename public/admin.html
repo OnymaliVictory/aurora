@@ -74,6 +74,7 @@
       <button class="adm-tab" data-tab="shops" onclick="showTab('shops')">Shops</button>
       <button class="adm-tab" data-tab="users" onclick="showTab('users')">Users</button>
       <button class="adm-tab" data-tab="support" onclick="showTab('support')" id="tab-support">Support</button>
+      <button class="adm-tab" data-tab="pricing" onclick="showTab('pricing')">Pricing</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -105,6 +106,23 @@
       <div class="adm-table-wrap" id="disputes-table"></div>
       <div class="adm-sub-h">Recent admin actions</div>
       <div id="audit-list"></div>
+    </div>
+
+    <!-- PRICING -->
+    <div class="adm-pane" id="pane-pricing">
+      <div class="glass-card" style="padding:18px;max-width:640px">
+        <div class="adm-sub-h" style="margin-top:0">How Aurora earns</div>
+        <p class="adm-info" style="margin:0 0 14px"><b>Markup</b> is added on top of the seller's price — buyers pay it, sellers never see it. <b>Commission</b> is taken out of what the seller receives. Use either, or both. Changes apply to NEW orders only; existing orders keep the rates they were placed with.</p>
+        <label class="form-label">Markup on every product (%)</label>
+        <input class="adm-search" id="pr-markup" type="number" min="0" max="50" step="0.01" style="width:140px;margin-bottom:12px">
+        <label class="form-label">Commission taken from sellers (%)</label>
+        <input class="adm-search" id="pr-commission" type="number" min="0" max="30" step="0.01" style="width:140px;margin-bottom:12px">
+        <div class="adm-sub-h">Preview — seller lists a ₦13,000 item</div>
+        <div id="pr-preview" class="adm-info" style="margin:0 0 14px"></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="adm-head-btn" style="margin-left:0" id="pr-save" onclick="savePricing()">Save pricing</button><span id="pr-msg" class="adm-info" style="margin:0"></span></div>
+        <p class="adm-info" style="margin-top:14px">Remember: Paystack takes its own processing fee from every payment, and charges a small fee per seller payout. Your markup + commission must cover those, or you lose money on each sale. Check the current rates on Paystack's pricing page.</p>
+      </div>
+      <div class="adm-kpis" id="pr-earn" style="margin-top:16px"></div>
     </div>
 
     <!-- SHOPS -->
@@ -202,6 +220,7 @@ function showTab(t) {
   if (t === 'shops') loadShops();
   if (t === 'users') loadUsers();
   if (t === 'support') loadTickets();
+  if (t === 'pricing') loadPricing();
 }
 
 // ---------- overview ----------
@@ -269,7 +288,7 @@ async function openOrder(id) {
         ${row('Deliver to', e([o.address, o.area, o.city].filter(Boolean).join(', ') || '—') + ' (' + e(o.deliveryType) + ')')}
         ${o.note ? row('Buyer note', e(o.note)) : ''}
         ${row('Subtotal', fmtNaira(o.subtotal))}${row('Delivery', fmtNaira(o.deliveryFee))}${row('Total', '<b>' + fmtNaira(o.total) + '</b>')}
-        ${row('Commission', o.commission == null ? '—' : fmtNaira(o.commission))}${row('Seller gets', o.payout == null ? '—' : fmtNaira(o.payout))}
+        ${row('Aurora markup', fmtNaira(o.markup || 0))}${row('Commission', o.commission == null ? '—' : fmtNaira(o.commission))}${row('Seller gets', o.payout == null ? '—' : fmtNaira(o.payout))}
         ${row('Paystack ref', e(o.paystackReference || '—'))}${row('Paid', e(dateOf(o.paidAt)))}${row('Delivered', e(dateOf(o.deliveredAt)))}${row('Paid out', e(dateOf(o.releasedAt)))}
       </dl>
       <div class="adm-sub-h">Items</div>
@@ -446,6 +465,33 @@ async function toggleStatus() {
   } catch (err) { showToast(err.message, 'error'); }
 }
 
+// ---------- pricing ----------
+function prPreview() {
+  const m = parseFloat($('pr-markup').value) || 0, c = parseFloat($('pr-commission').value) || 0;
+  const base = 13000, buyer = Math.ceil(base * (1 + m / 100) - 1e-9), cut = Math.round((base * c / 100) * 100) / 100;
+  $('pr-preview').innerHTML = `Buyer pays <b>${fmtNaira(buyer)}</b> (+ delivery) · Seller receives <b>${fmtNaira(base - cut)}</b> · Aurora keeps <b>${fmtNaira(buyer - base + cut)}</b> (before Paystack fees)`;
+}
+async function loadPricing() {
+  try {
+    const { settings, earnings } = await AuroraAPI.get('/admin/settings');
+    $('pr-markup').value = settings.markupPercent; $('pr-commission').value = settings.commissionPercent;
+    ['pr-markup', 'pr-commission'].forEach(id => $(id).oninput = prPreview); prPreview();
+    const k = (n, l) => `<div class="glass-card adm-kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+    $('pr-earn').innerHTML = k(fmtNaira(earnings.markup), 'Earned from markup (paid orders)') + k(fmtNaira(earnings.commission), 'Earned from commission') + k(fmtNaira(Number(earnings.markup) + Number(earnings.commission)), 'Total before Paystack fees');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function savePricing() {
+  const btn = $('pr-save'); btn.disabled = true; $('pr-msg').textContent = '';
+  try {
+    const m = $('pr-markup').value, c = $('pr-commission').value;
+    if (!confirm(`Set markup to ${m}% and seller commission to ${c}% for all NEW orders?`)) return;
+    await AuroraAPI.request('/admin/settings', { method: 'PUT', body: { markupPercent: m, commissionPercent: c } });
+    $('pr-msg').textContent = '✓ Saved. New orders use these rates.'; showToast('✓ Pricing saved');
+    loadPricing();
+  } catch (err) { $('pr-msg').textContent = err.message; showToast(err.message, 'error'); }
+  finally { btn.disabled = false; }
+}
+
 async function init() {
   const user = await AuroraAuth.requireAuth();
   if (!user) return;
@@ -455,7 +501,7 @@ async function init() {
   $('adm-app').style.display = '';
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeOrder(); });
   const h = (location.hash || '').slice(1);
-  showTab(['overview', 'orders', 'disputes', 'shops', 'users', 'support'].includes(h) ? h : 'overview');
+  showTab(['overview', 'orders', 'disputes', 'shops', 'users', 'support', 'pricing'].includes(h) ? h : 'overview');
   listTimer = setInterval(() => { if (tab === 'support') loadTickets(); else if (tab === 'overview') loadOverview(); }, 20000);
 }
 init();

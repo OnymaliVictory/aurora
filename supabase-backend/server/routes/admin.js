@@ -2,6 +2,7 @@ const express = require('express');
 const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
 const orderNotify = require('../orderNotify');
+const pricing = require('../pricing');
 
 const router = express.Router();
 
@@ -162,8 +163,44 @@ router.get('/shops', async (req, res) => {
   });
 });
 
+// ============================================================
+// PRICING (markup + commission)
+// ============================================================
+// Both numbers are validated here on the server — the page's own checks are only for friendliness.
+const pct = (v, max) => {
+  if (typeof v !== 'number' && typeof v !== 'string') return null; // null / missing / true / [] must NOT silently become 0
+  if (typeof v === 'string' && !/^\d{1,3}(\.\d{1,2})?$/.test(v.trim())) return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 100) / 100 : null;
+};
+
+router.get('/settings', async (req, res) => {
+  const settings = await pricing.getSettings({ fresh: true });
+  const { data: earn } = await supabaseAdmin.rpc('admin_earnings');
+  res.json({ settings, earnings: earn || { markup: 0, commission: 0 } });
+});
+
+router.put('/settings', async (req, res) => {
+  const b = req.body || {};
+  const markup = pct(b.markupPercent, 50), commission = pct(b.commissionPercent, 30);
+  if (markup === null) return res.status(400).json({ error: 'Markup must be a number from 0 to 50.' });
+  if (commission === null) return res.status(400).json({ error: 'Commission must be a number from 0 to 30.' });
+  const before = await pricing.getSettings({ fresh: true });
+  const { error } = await supabaseAdmin.from('platform_settings').upsert({
+    id: 1, markup_percent: markup, commission_percent: commission, updated_at: new Date().toISOString(), updated_by: req.user.id,
+  }, { onConflict: 'id' });
+  if (error) { console.error('[admin] settings save', error.message); return res.status(500).json({ error: 'Could not save the settings.' }); }
+  pricing.clearCache();
+  const { error: aErr } = await supabaseAdmin.from('admin_audit').insert({
+    admin_id: req.user.id, action: 'pricing_changed',
+    detail: `markup ${before.markupPercent}% → ${markup}%, commission ${before.commissionPercent}% → ${commission}%`,
+  });
+  if (aErr) console.error('[admin] audit log failed for settings change', aErr.message);
+  res.json({ settings: await pricing.getSettings({ fresh: true }) });
+});
+
 // ---------- Orders ----------
-const ORDER_COLS = 'id, tracking_id, status, payment_status, payment_method, payout_status, disputed, total, commission_amount, payout_amount, delivery_type, created_at, shop_id, buyer_id, phone';
+const ORDER_COLS = 'id, tracking_id, status, payment_status, payment_method, payout_status, disputed, total, markup_amount, commission_amount, payout_amount, delivery_type, created_at, shop_id, buyer_id, phone';
 
 async function namesFor(orders) {
   const shopIds = [...new Set(orders.map(o => o.shop_id).filter(Boolean))];
@@ -182,7 +219,7 @@ const orderRow = (o, n) => ({
   id: o.id, trackingId: o.tracking_id || null, status: o.status,
   paymentStatus: o.payment_status, paymentMethod: o.payment_method, payoutStatus: o.payout_status,
   disputed: !!o.disputed, total: Number(o.total), commission: o.commission_amount != null ? Number(o.commission_amount) : null,
-  payout: o.payout_amount != null ? Number(o.payout_amount) : null,
+  payout: o.payout_amount != null ? Number(o.payout_amount) : null, markup: Number(o.markup_amount || 0),
   createdAt: o.created_at, shopName: n.shopName(o.shop_id), buyerName: n.buyerName(o.buyer_id),
 });
 

@@ -1,16 +1,5 @@
 const supabaseAdmin = require('./supabaseAdmin');
-
-const crypto = require('crypto');
-
-// No 0/O/1/I, so IDs are easy to read from a screenshot
-const TRACK_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-function generateTrackingId() {
-  const bytes = crypto.randomBytes(8);
-  let out = '';
-  for (let i = 0; i < 8; i++) out += TRACK_ALPHABET[bytes[i] % TRACK_ALPHABET.length];
-  return `AUR-${out.slice(0, 4)}-${out.slice(4)}`; // e.g. AUR-7K4M-X9QP
-}
+const { getSettings, buyerPrice } = require('./pricing');
 
 const DELIVERY_FEES = { standard: 1500, express: 3500, pickup: 0 };
 
@@ -20,7 +9,6 @@ function orderOut(row, extra = {}) {
     buyer_id: row.buyer_id,
     shop_id: row.shop_id,
     status: row.status,
-    trackingId: row.tracking_id,
     deliveryType: row.delivery_type,
     deliveryFee: Number(row.delivery_fee),
     subtotal: Number(row.subtotal),
@@ -38,11 +26,25 @@ function orderOut(row, extra = {}) {
     paystackReference: row.paystack_reference,
     commissionAmount: row.commission_amount != null ? Number(row.commission_amount) : null,
     payoutAmount: row.payout_amount != null ? Number(row.payout_amount) : null,
+    markupAmount: Number(row.markup_amount || 0),
     deliveredAt: row.delivered_at,
     disputed: row.disputed,
     paidAt: row.paid_at,
     releasedAt: row.released_at,
     ...extra,
+  };
+}
+
+// The SELLER's view of an order: their own prices only. Aurora's markup is never shown to them.
+function orderOutForSeller(row, extra = {}) {
+  const o = orderOut(row, extra);
+  const m = Number(row.markup_amount || 0);
+  return {
+    ...o,
+    subtotal: o.subtotal - m,
+    total: o.total - m,
+    markupAmount: 0,
+    items: (row.items || []).map(i => ({ ...i, price: i.basePrice != null ? Number(i.basePrice) : Number(i.price), basePrice: undefined })),
   };
 }
 
@@ -73,22 +75,29 @@ async function createOrdersFromCart(buyerId, buyerPhone, data) {
     byShop[product.shop_id].push({ product, qty, size: item.size || '' });
   }
 
+  // Prices are ALWAYS recomputed here from the database + current admin settings.
+  // Whatever price the browser's cart shows is ignored.
+  const { markupPercent, commissionPercent } = await getSettings({ fresh: true });
   const fee = DELIVERY_FEES[deliveryType] ?? DELIVERY_FEES.standard;
   const createdOrders = [];
 
   for (const shopId of Object.keys(byShop)) {
     const lineItems = byShop[shopId];
-    const subtotal = lineItems.reduce((s, i) => s + Number(i.product.price) * i.qty, 0);
+    const baseSubtotal = lineItems.reduce((s, i) => s + Number(i.product.price) * i.qty, 0);
+    const subtotal = lineItems.reduce((s, i) => s + buyerPrice(i.product.price, markupPercent) * i.qty, 0);
+    const markupAmount = subtotal - baseSubtotal;
 
     const { data: order, error } = await supabaseAdmin.from('orders').insert({
       buyer_id: buyerId,
       shop_id: Number(shopId),
       status: 'pending',
-      tracking_id: generateTrackingId(),
       delivery_type: deliveryType || 'standard',
       delivery_fee: fee,
       subtotal,
       total: subtotal + fee,
+      markup_percent: markupPercent,
+      markup_amount: markupAmount,
+      commission_percent: commissionPercent,
       address: address || '',
       city: city || '',
       area: area || '',
@@ -100,7 +109,8 @@ async function createOrdersFromCart(buyerId, buyerPhone, data) {
       items: lineItems.map(i => ({
         productId: i.product.id,
         name: i.product.name,
-        price: Number(i.product.price),
+        price: buyerPrice(i.product.price, markupPercent),
+        basePrice: Number(i.product.price),
         qty: i.qty,
         size: i.size,
         emoji: i.product.emoji,
@@ -121,4 +131,4 @@ async function createOrdersFromCart(buyerId, buyerPhone, data) {
   return createdOrders;
 }
 
-module.exports = { createOrdersFromCart, orderOut, DELIVERY_FEES };
+module.exports = { createOrdersFromCart, orderOut, orderOutForSeller, DELIVERY_FEES };

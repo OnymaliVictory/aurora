@@ -21,7 +21,7 @@ async function announceOrders(orders) {
         await notify(shop.owner_id, {
           kind: 'order', dedupeKey: `order:${o.id}:new`, url: 'seller.html',
           title: `New order #AUR-${o.id}`,
-          body: `${count} item${count === 1 ? '' : 's'} · ${naira(o.total)} · ${o.payment_method === 'pod' ? 'Pay on delivery' : 'Paid online'}`,
+          body: `${count} item${count === 1 ? '' : 's'} · ${naira(Number(o.total) - Number(o.markup_amount || 0))} · ${o.payment_method === 'pod' ? 'Pay on delivery' : 'Paid online'}`,
         });
       }
       if (o.buyer_id) {

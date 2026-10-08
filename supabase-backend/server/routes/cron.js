@@ -2,6 +2,7 @@ const express = require('express');
 const supabaseAdmin = require('../supabaseAdmin');
 const paystack = require('../paystack');
 const { notify } = require('../notify');
+const { getSettings, buyerPrice } = require('../pricing');
 
 const router = express.Router();
 
@@ -98,7 +99,8 @@ async function remindCarts(deadline) {
     const live = (cart.items || []).map(i => ({ item: i, p: (products || []).find(p => p.id === Number(i.productId)) })).filter(x => x.p && x.p.stock > 0);
     if (!live.length) { out.skipped++; continue; }
 
-    const total = live.reduce((s, x) => s + Number(x.p.price) * (Number(x.item.qty) || 1), 0);
+    const mk = (await getSettings()).markupPercent;
+    const total = live.reduce((s, x) => s + buyerPrice(x.p.price, mk) * (Number(x.item.qty) || 1), 0);
     const names = live.map(x => x.p.name);
     const shown = names.slice(0, 2).join(', ') + (names.length > 2 ? ` and ${names.length - 2} more` : '');
     await notify(cart.user_id, {
@@ -133,6 +135,7 @@ async function sendDigests(deadline) {
     let fresh = (products || []).filter(p => !seen.includes(p.id));
     if (!fresh.length && (products || []).length) { seen = []; fresh = products; } // they've seen them all: start the rotation again
     const picks = fresh.slice(0, 3);
+    const settingsNow = await getSettings();
     if (!picks.length) { out.skipped++; continue; }
 
     const { data: shops } = await supabaseAdmin.from('shops').select('id, name, slug').in('id', [...new Set(picks.map(p => p.shop_id))]);
@@ -140,7 +143,7 @@ async function sendDigests(deadline) {
     await notify(buyerId, {
       kind: 'digest', dedupeKey: 'digest:picks', url: first ? `shop.html?slug=${encodeURIComponent(first.slug)}` : 'buyer.html',
       title: 'A few picks from shops you follow',
-      body: picks.map(p => `${p.name} (${naira(p.price)})`).join(' · '),
+      body: picks.map(p => `${p.name} (${naira(buyerPrice(p.price, (settingsNow || {}).markupPercent))})`).join(' · '),
     });
     await supabaseAdmin.from('notification_prefs').upsert({ user_id: buyerId, last_digest_at: new Date().toISOString(), digest_seen: [...seen, ...picks.map(p => p.id)] }, { onConflict: 'user_id' });
     out.sent++;

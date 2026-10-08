@@ -4,16 +4,19 @@ const { requireAuth } = require('../auth');
 const { upload, uploadToSupabase, deleteFromSupabase } = require('../uploads');
 const { notifyMany, clip } = require('../notify');
 const { str } = require('../security');
+const { getSettings, buyerPrice } = require('../pricing');
 
 const router = express.Router();
 
-function productOut(row) {
+// `markup` = percent added for BUYERS. Pass null/undefined for the seller's own view (their real price).
+function productOut(row, markup) {
   if (!row) return null;
+  const forBuyer = markup !== undefined && markup !== null;
   return {
     id: row.id,
     shop_id: row.shop_id,
     name: row.name,
-    price: Number(row.price),
+    price: forBuyer ? buyerPrice(row.price, markup) : Number(row.price),
     stock: row.stock,
     sold: row.sold,
     category: row.category,
@@ -36,10 +39,22 @@ async function shopOwnedBy(shopId, userId) {
   return data && data.owner_id === userId ? data : null;
 }
 
+// Public: what BUYERS see (seller price + Aurora markup).
 router.get('/shop/:shopId', async (req, res) => {
   const { data, error } = await supabaseAdmin.from('products').select('*').eq('shop_id', Number(req.params.shopId)).order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ products: data.map(productOut) });
+  const { markupPercent } = await getSettings();
+  res.json({ products: data.map(r => productOut(r, markupPercent)) });
+});
+
+// Seller only: their own products with THEIR price, plus what buyers will pay.
+router.get('/mine/:shopId', requireAuth, async (req, res) => {
+  const shop = await shopOwnedBy(Number(req.params.shopId), req.user.id);
+  if (!shop) return res.status(403).json({ error: 'Not your shop.' });
+  const { data, error } = await supabaseAdmin.from('products').select('*').eq('shop_id', shop.id).order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  const { markupPercent } = await getSettings();
+  res.json({ products: data.map(r => ({ ...productOut(r), buyerPrice: buyerPrice(r.price, markupPercent) })), markupPercent });
 });
 
 // Create a product. Accepts multipart/form-data with an optional 'image'
@@ -93,7 +108,7 @@ router.post('/shop/:shopId', requireAuth, (req, res, next) => {
       await notifyMany(followers.map(f => f.buyer_id), {
         kind: 'new_product', dedupeKey: `shop:${shopId}:new`, url: `shop.html?slug=${encodeURIComponent(shop.slug)}`,
         title: `${shop.name} just added something new`,
-        body: `${clip(product.name, 80)} · ₦${Math.round(Number(product.price)).toLocaleString('en-NG')}`,
+        body: `${clip(product.name, 80)} · ₦${buyerPrice(product.price, (await getSettings()).markupPercent).toLocaleString('en-NG')}`,
       });
     }
   } catch (err) { console.error('[notify] new product:', err.message); }

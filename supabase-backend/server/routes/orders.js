@@ -1,7 +1,7 @@
 const express = require('express');
 const supabaseAdmin = require('../supabaseAdmin');
 const { requireAuth } = require('../auth');
-const { createOrdersFromCart, orderOut } = require('../orderCreation');
+const { createOrdersFromCart, orderOut, orderOutForSeller } = require('../orderCreation');
 const orderNotify = require('../orderNotify');
 
 const router = express.Router();
@@ -47,7 +47,7 @@ router.get('/shop', requireAuth, async (req, res) => {
 
   const orders = data.map(row => {
     const buyer = buyers.find(b => b.id === row.buyer_id);
-    return orderOut(row, { buyer: buyer ? { id: buyer.id, name: `${buyer.first_name} ${buyer.last_name}` } : null });
+    return orderOutForSeller(row, { buyer: buyer ? { id: buyer.id, name: `${buyer.first_name} ${buyer.last_name}` } : null });
   });
   res.json({ orders });
 });
@@ -151,7 +151,7 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
   const { data: updated, error } = await supabaseAdmin.from('orders').update(patch).eq('id', order.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   if (updated.status !== order.status) await orderNotify.announceStatus(updated);
-  res.json({ order: orderOut(updated) });
+  res.json({ order: orderOutForSeller(updated) });
 });
 
 // Buyer disputes a delivered order — freezes the escrow release. Real

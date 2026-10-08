@@ -416,6 +416,7 @@ function renderProducts(){
       <div class="product-body">
         <div class="product-name">${escapeHtml(p.name)}</div>
         <div class="product-price">${fmtNaira(p.price)}</div>
+        ${(window.__markup>0) ? `<div style="font-size:11px;color:var(--text-dim)">Buyers see ${fmtNaira(p.buyerPrice ?? Math.ceil(p.price*(1+window.__markup/100)))}</div>` : ''}
         <div class="product-stock">Stock: ${p.stock ?? 0} · ${p.sold||0} sold</div>
         <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
           <input type="file" id="photo-input-${p.id}" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="changeProductPhoto(${p.id},this)">
@@ -691,11 +692,12 @@ async function init(){
     document.getElementById('sidebar-shopname').textContent = shop.name;
     document.getElementById('sidebar-avatar').textContent = (user.first_name||'?')[0].toUpperCase();
 
-    const [{ products }, { orders }] = await Promise.all([
-      AuroraAPI.get(`/products/shop/${shop.id}`),
+    const [{ products, markupPercent }, { orders }] = await Promise.all([
+      AuroraAPI.get(`/products/mine/${shop.id}`),
       AuroraAPI.get('/orders/shop'),
     ]);
     myProducts = products;
+    window.__markup = Number(markupPercent || 0);
     myOrders = orders;
     renderProducts();
     renderRecentOrders();

@@ -118,8 +118,12 @@ async function markPaid(ref) {
 
   const updated = [];
   for (const order of orders) {
-    const commission = Math.round(Number(order.total) * (COMMISSION_PERCENT / 100) * 100) / 100;
-    const payout = Math.round((Number(order.total) - commission) * 100) / 100;
+    // Seller's side = their own prices + delivery fee. The markup is Aurora's and never reaches them.
+    // Commission % comes from the order itself (the rate in force when it was placed).
+    const pct = order.commission_percent != null ? Number(order.commission_percent) : COMMISSION_PERCENT;
+    const sellerSide = Number(order.total) - Number(order.markup_amount || 0);
+    const commission = Math.round(sellerSide * (pct / 100) * 100) / 100;
+    const payout = Math.round((sellerSide - commission) * 100) / 100;
     const { data } = await supabaseAdmin.from('orders').update({
       payment_status: 'paid',
       paid_at: new Date().toISOString(),
