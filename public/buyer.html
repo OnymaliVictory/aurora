@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme_v2")||"light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Aurora — Discover Shops</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/aurora-app.css">
 </head>
 <body>
 <canvas id="aurora-canvas"></canvas>
@@ -36,7 +36,7 @@
     <div class="sidebar-item" id="nav-messages" onclick="showView('messages',this)"><span class="s-icon">💬</span>Messages</div>
     <div class="sidebar-section">More</div>
     <div class="sidebar-item" onclick="window.location.href='create-shop.html'"><span class="s-icon">🏪</span>Open a Shop</div>
-    <div class="sidebar-item" onclick="showToast('Settings coming soon!')"><span class="s-icon">⚙️</span>Settings</div>
+    <div class="sidebar-item" onclick="window.location.href='settings.html'"><span class="s-icon">⚙️</span>Settings</div>
     <div class="sidebar-item" id="nav-logout" style="display:none" onclick="AuroraAuth.logout()"><span class="s-icon">🚪</span>Log Out</div>
     <div class="user-profile-mini" id="user-profile-mini" style="cursor:pointer" onclick="location.href='auth.html'">
       <div class="avatar" id="profile-avatar">?</div>
@@ -426,4 +426,12 @@ async function init(){
 }
 init();
 </script>
+<nav class="app-tabbar" id="app-tabbar" aria-label="Main">
+  <a href="#" data-v="nearby" class="on" onclick="tabGo(event,'nearby')"><span class="ti">🏠</span>Home</a>
+  <a href="#" data-v="browse" onclick="tabGo(event,'browse')"><span class="ti">🔍</span>Browse</a>
+  <a href="#" onclick="event.preventDefault();openCart()"><span class="ti">🛒</span>Cart <span class="sidebar-badge cart-count-badge" style="padding:0 6px">0</span></a>
+  <a href="#" data-v="orders" onclick="tabGo(event,'orders')"><span class="ti">📦</span>Orders</a>
+  <a href="settings.html"><span class="ti">👤</span>Account</a>
+</nav>
+<script>function tabGo(e,v){e.preventDefault();var el=document.getElementById('nav-'+v);showView(v,el);document.querySelectorAll('#app-tabbar a').forEach(function(a){a.classList.toggle('on',a.dataset.v===v)});}</script>
 </body></html>

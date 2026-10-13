@@ -33,8 +33,8 @@ const AuroraAPI = {
 
 // ---------- Theme ----------
 const AuroraTheme = {
-  key: 'aurora_theme',
-  get() { try { return localStorage.getItem(this.key) || 'dark'; } catch { return 'dark'; } },
+  key: 'aurora_theme_v2',
+  get() { try { return localStorage.getItem(this.key) || 'light'; } catch { return 'light'; } },
   apply(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     try { localStorage.setItem(this.key, theme); } catch {}

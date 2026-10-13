@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>(function(){try{var t=localStorage.getItem("aurora_theme")||"dark";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme_v2")||"light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title id="page-title">Shop — Aurora</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/aurora-app.css">
 </head>
 <body>
 <canvas id="aurora-canvas"></canvas>
@@ -230,7 +230,7 @@ function shopTab(tab,el){
   el.classList.add('active');
   document.getElementById('tab-'+tab).style.display='';
 }
-function copyShopLink(){ navigator.clipboard?.writeText(location.origin+'/shop.html?slug='+SHOP.slug).catch(()=>{}); showToast('🔗 Shop link copied!'); }
+function copyShopLink(){ navigator.clipboard?.writeText(location.origin+'/'+SHOP.slug).catch(()=>{}); showToast('🔗 Shop link copied!'); }
 function openMsgModal(){
   if (!AuroraAuth.getCached()) { window.location.href = 'auth.html'; return; }
   document.getElementById('modal-msg').classList.add('open');
@@ -307,7 +307,9 @@ function applyBranding() {
 
 async function init(){
   const params = new URLSearchParams(location.search);
-  const key = params.get('slug') || params.get('id');
+  // Pretty link: /starmart  (older links: shop.html?slug=starmart still work)
+  const pathKey = (location.pathname.match(/^\/([a-z0-9][a-z0-9-]*)\/?$/i) || [])[1];
+  const key = params.get('slug') || params.get('id') || (pathKey && !/^(index|shop)$/i.test(pathKey) ? pathKey : null);
   if (!key) { document.getElementById('shop-content').style.display='none'; document.getElementById('shop-not-found').style.display=''; return; }
   try {
     const { shop } = await AuroraAPI.get(`/shops/${encodeURIComponent(key)}`);
