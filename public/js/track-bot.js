@@ -168,6 +168,7 @@
       refresh();
     }, 6000);
   }
+
   // Wires one form + one result box together. Used by the bot AND track.html.
   function bindLookup(form, input, resultBox) {
     form.addEventListener('submit', async e => {

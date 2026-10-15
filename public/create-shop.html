@@ -82,7 +82,8 @@
         </div>
         <div class="form-group"><label class="form-label">Street Address (optional)</label><input class="form-input" id="shop-address" placeholder="For in-person pickup"></div>
         <div class="form-group">
-          <button class="btn-ghost" style="font-size:13px;padding:11px 18px;border-radius:12px;width:100%" onclick="detectShopLocation()">📍 Use My Current Location</button>
+          <button class="btn-ghost" style="font-size:13px;padding:11px 18px;border-radius:12px;width:100%" id="btn-shop-loc" onclick="detectShopLocation()">📍 Use My Current Location</button>
+          <div class="form-hint" id="shop-loc-status" style="margin-top:8px">Stand in your shop when you tap this so nearby buyers can find you. You can also do it later in Settings.</div>
         </div>
         <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" id="shop-phone" type="tel" placeholder="+234 800 000 0000"></div>
         <div class="form-group">
@@ -174,6 +175,7 @@
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/app.js"></script>
+<script src="js/nearby.js"></script>
 <script src="js/aurora-bg.js"></script>
 <script>
 let currentStep=1, shopColor='#00ffb3', createdShop=null;
@@ -219,15 +221,18 @@ function selectColor(el,color){
   document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
   el.classList.add('selected'); shopColor=color;
 }
-function detectShopLocation(){
-  if(navigator.geolocation){
-    showToast('📍 Getting location...');
-    navigator.geolocation.getCurrentPosition(pos=>{
-      showToast('✓ Location found — please confirm your city & area below');
-    },()=>showToast('Could not get location','error'));
-  } else {
-    showToast('Location is not available on this device','error');
-  }
+let shopLat=null, shopLng=null;
+async function detectShopLocation(){
+  const btn=document.getElementById('btn-shop-loc'); if(btn){btn.disabled=true;btn.textContent='📍 Getting location…';}
+  try{
+    const pos=await AuroraLoc.detect(); shopLat=pos.lat; shopLng=pos.lng;
+    const n=await AuroraLoc.reverse(pos.lat,pos.lng);
+    if(n.city && !document.getElementById('shop-city').value) document.getElementById('shop-city').value=n.city;
+    if(n.area && !document.getElementById('shop-area').value) document.getElementById('shop-area').value=n.area;
+    document.getElementById('shop-loc-status').textContent='✓ Shop position saved — buyers nearby will find you.';
+    showToast('✓ Location found — please confirm your city & area');
+  }catch(err){ showToast(err.message,'error'); }
+  if(btn){btn.disabled=false;btn.textContent='📍 Use My Current Location';}
 }
 async function submitShop(){
   const btn = document.querySelector('#step-3 .btn-full');
@@ -247,6 +252,7 @@ async function submitShop(){
     deliveryHome: document.getElementById('delivery-home').checked,
     deliveryPickup: document.getElementById('delivery-pickup').checked,
     payOnDelivery: document.getElementById('delivery-pod').checked,
+    lat: shopLat, lng: shopLng,
   };
   if (btn) { btn.disabled = true; btn.textContent = 'Creating your shop…'; }
   try {

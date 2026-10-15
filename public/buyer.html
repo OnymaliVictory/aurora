@@ -50,30 +50,43 @@
     <div id="view-nearby">
       <div class="atom-header">
         <h2>Shops Near You</h2>
-        <div class="atom-location" onclick="detectLocation()">📍 <span id="location-label">Set your location</span> <span style="font-size:10px;opacity:.6">(tap to update)</span></div>
+        <div class="atom-location" id="loc-line" onclick="changeLocation()">📍 <span id="location-label">Set your location</span> <span style="font-size:11px;color:var(--aurora-green);font-weight:700">Change</span></div>
       </div>
-      <div class="atom-scene" id="atom-scene">
-        <div class="orbit-ring orbit-ring-1"></div>
-        <div class="orbit-ring orbit-ring-2"></div>
-        <div class="orbit-ring orbit-ring-3"></div>
-        <div class="atom-core" onclick="showView('browse', document.getElementById('nav-browse'))" style="cursor:pointer">
-          <div class="atom-core-text">AURORA</div>
-          <div class="atom-core-sub">TAP TO BROWSE</div>
+      <!-- no location yet -->
+      <div id="nearby-ask" class="glass-card" style="display:none;max-width:480px;margin:24px auto;padding:30px 24px;text-align:center">
+        <div style="font-size:44px;margin-bottom:8px">📍</div>
+        <div style="font-size:20px;font-weight:800;margin-bottom:8px">See shops around you</div>
+        <p style="color:var(--text-muted);font-size:14.5px;line-height:1.6;margin-bottom:18px">Allow your location and we’ll show only the shops close to you. Searching for products always covers every store.</p>
+        <a class="btn-full" href="near.html" style="display:block;text-decoration:none;text-align:center">📍 Allow location</a>
+        <button class="btn-ghost" style="margin-top:10px;width:100%" onclick="changeLocation()">Or type my area</button>
+      </div>
+      <!-- has location -->
+      <div id="nearby-on" style="display:none">
+        <div class="atom-scene" id="atom-scene">
+          <div class="orbit-ring orbit-ring-1"></div>
+          <div class="orbit-ring orbit-ring-2"></div>
+          <div class="orbit-ring orbit-ring-3"></div>
+          <div class="atom-core" onclick="showView('browse', document.getElementById('nav-browse'))" style="cursor:pointer">
+            <div class="atom-core-text">AURORA</div>
+            <div class="atom-core-sub">TAP TO BROWSE</div>
+          </div>
         </div>
-      </div>
-      <div class="nearby-wrap">
-        <div class="nearby-title">All Shops</div>
-        <div class="shops-grid" id="nearby-grid"><div style="padding:20px;color:var(--text-dim);font-size:13px">Loading shops…</div></div>
+        <div class="nearby-wrap">
+          <div class="nearby-title" id="nearby-title">Shops near you</div>
+          <div class="shops-grid" id="nearby-grid"><div style="padding:20px;color:var(--text-dim);font-size:13px">Loading shops…</div></div>
+          <div style="text-align:center;margin-top:16px"><a href="near.html" style="font-weight:700;color:var(--aurora-green);font-size:14px">Open the full “Shops near me” page →</a></div>
+        </div>
       </div>
     </div>
 
     <!-- BROWSE / SEARCH VIEW -->
     <div id="view-browse" style="display:none">
-      <h2 class="page-title" style="margin-bottom:20px">Browse Shops</h2>
+      <h2 class="page-title" style="margin-bottom:6px">Browse &amp; Search</h2>
+      <p class="page-subtitle" style="margin-bottom:16px">Searching covers <strong>all stores</strong>, wherever they are.</p>
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
         <div class="search-bar-wrap" style="flex:1;min-width:220px">
           <span class="search-icon">🔍</span>
-          <input class="search-input" id="search-input" placeholder="Search shops, categories..." oninput="doSearch(this.value)">
+          <input class="search-input" id="search-input" placeholder="Search products, shops, categories..." oninput="doSearch(this.value)">
         </div>
         <select class="form-select" style="width:160px" onchange="filterBySort(this.value)">
           <option value="">Sort: A–Z</option>
@@ -92,6 +105,11 @@
         <span class="filter-chip" onclick="filterCat('Sports',this)">⚽ Sports</span>
         <span class="filter-chip" onclick="filterCat('Books',this)">📚 Books</span>
       </div>
+      <div id="product-results" style="display:none;margin-bottom:22px">
+        <div class="nearby-title" style="text-align:left;margin-bottom:12px" id="pr-title">Products</div>
+        <div class="product-listing-grid" id="pr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"></div>
+      </div>
+      <div class="nearby-title" id="shops-title" style="text-align:left;margin:6px 0 12px;display:none">Shops</div>
       <div class="shops-grid" id="browse-grid"></div>
       <div id="no-results" style="display:none;text-align:center;padding:48px 0;color:var(--text-dim)">
         <div style="font-size:36px;margin-bottom:12px">🔭</div>
@@ -172,9 +190,10 @@
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/app.js"></script>
+<script src="js/nearby.js"></script>
 <script src="js/aurora-bg.js"></script>
 <script>
-let SHOPS = [];
+let SHOPS = [], NEARBY = [];
 let activeCat = 'all', searchQuery = '', activeChatShop = null;
 
 function isShopOpen(s){
@@ -208,7 +227,29 @@ function renderGrid(id, shops){
   el.innerHTML = shops.length ? shops.map(shopCard).join('') : '<div style="padding:20px;color:var(--text-dim);font-size:13px">No shops here yet.</div>';
 }
 
-function doSearch(q){ searchQuery=q.toLowerCase(); applyFilters(); }
+let _prT;
+function doSearch(q){
+  searchQuery=q.toLowerCase(); applyFilters();
+  clearTimeout(_prT);
+  const box=document.getElementById('product-results');
+  if(q.trim().length<2){ box.style.display='none'; document.getElementById('shops-title').style.display='none'; return; }
+  _prT=setTimeout(async()=>{
+    try{
+      // Product search is deliberately NOT limited by location: it searches every store.
+      const { products } = await AuroraAPI.get('/products?limit=24&q='+encodeURIComponent(q.trim()));
+      if(document.getElementById('search-input').value.trim()!==q.trim()) return;
+      document.getElementById('pr-title').textContent = products.length ? 'Products from all stores' : 'No products match';
+      document.getElementById('pr-grid').innerHTML = products.map(p=>{
+        const sh=p.shop||{};
+        return `<a class="listing-card" href="shop.html?slug=${encodeURIComponent(sh.slug||'')}&product=${p.id}" style="text-decoration:none;color:inherit">
+          <div class="listing-img">${p.imageUrl?`<img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.name)}" loading="lazy">`:escapeHtml(p.emoji||'📦')}</div>
+          <div class="listing-body"><div class="listing-name">${escapeHtml(p.name)}</div>
+          <div class="listing-desc">${escapeHtml(sh.name||'')}${sh.city?' · '+escapeHtml(sh.city):''}</div>
+          <div class="listing-footer"><div class="listing-price">₦${Number(p.price||0).toLocaleString()}</div></div></div></a>`; }).join('');
+      box.style.display=''; document.getElementById('shops-title').style.display='';
+    }catch{ box.style.display='none'; }
+  },350);
+}
 function filterCat(cat,el){
   activeCat=cat;
   document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
@@ -230,41 +271,6 @@ function applyFilters(){
   });
   renderGrid('browse-grid',shops);
   document.getElementById('no-results').style.display = shops.length?'none':'block';
-}
-
-function buildAtomNodes(){
-  const scene=document.getElementById('atom-scene');
-  if(!scene)return;
-  document.querySelectorAll('.shop-node').forEach(n=>n.remove());
-  const radii=[95,155,220], counts=[3,3,4];
-  let idx=0;
-  counts.forEach((cnt,oi)=>{
-    for(let i=0;i<cnt&&idx<SHOPS.length;i++,idx++){
-      const shop=SHOPS[idx];
-      const angle=(360/cnt)*i - 90;
-      const rad=angle*Math.PI/180;
-      const r=radii[oi];
-      const x=Math.cos(rad)*r, y=Math.sin(rad)*r;
-      const open = isShopOpen(shop);
-      const node=document.createElement('a');
-      node.href='shop.html?slug='+shop.slug;
-      node.className='shop-node';
-      node.style.transform=`translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-      node.style.animation=`nodeHover ${2.4+oi*.5}s ease-in-out ${i*.35}s infinite alternate`;
-      node.innerHTML=`
-        <div class="shop-node-inner" style="border-color:${open?shop.color:'var(--glass-border)'}">
-          <div class="shop-node-emoji">${shop.emoji||'🏪'}</div>
-          <div class="shop-node-name">${escapeHtml(shop.name)}</div>
-        </div>
-        <div class="shop-tooltip">
-          <div class="tooltip-name">${escapeHtml(shop.name)}</div>
-          <div class="tooltip-cat">${escapeHtml(shop.category)}</div>
-          <div class="tooltip-dist">📍 ${escapeHtml(shop.area||shop.city||'Aurora')}</div>
-          <div class="tooltip-rating">★ ${shop.reviewCount?shop.rating.toFixed(1):'New'}</div>
-        </div>`;
-      scene.appendChild(node);
-    }
-  });
 }
 
 function showView(view, el){
@@ -393,26 +399,38 @@ async function sendMsg(){
   } catch (err) { showToast(err.message, 'error'); }
 }
 
-function detectLocation(){
-  if(navigator.geolocation){
-    showToast('📍 Getting your location...');
-    navigator.geolocation.getCurrentPosition(pos=>{
-      const {latitude:lat,longitude:lng}=pos.coords;
-      document.getElementById('location-label').textContent=`${lat.toFixed(2)}, ${lng.toFixed(2)}`;
-      showToast('✓ Location updated!');
-    }, ()=>showToast('Could not get location. Please enable GPS.','error'));
-  } else { showToast('Geolocation not supported','error'); }
+async function loadNearby(){
+  const loc=AuroraLoc.get();
+  const ask=document.getElementById('nearby-ask'), on=document.getElementById('nearby-on');
+  if(!loc){ ask.style.display=''; on.style.display='none'; document.getElementById('location-label').textContent='Set your location'; return; }
+  ask.style.display='none'; on.style.display='';
+  document.getElementById('location-label').textContent=loc.label||'Your location';
+  document.getElementById('nearby-grid').innerHTML='<div style="padding:20px;color:var(--text-dim);font-size:13px">Finding shops near you…</div>';
+  try{
+    NEARBY=await AuroraNearby.fetchShops(loc);
+    const r=AuroraLoc.radius();
+    document.getElementById('nearby-title').textContent = NEARBY.length ? `${NEARBY.length} shop${NEARBY.length===1?'':'s'} within ${r} km` : 'Shops near you';
+    document.getElementById('atom-scene').style.display = NEARBY.length ? '' : 'none';
+    document.getElementById('nearby-grid').innerHTML = NEARBY.length ? NEARBY.map(shopCard).join('') :
+      `<div class="glass-card" style="grid-column:1/-1;padding:26px;text-align:center"><div style="font-size:34px">🔭</div><div style="font-weight:800;font-size:17px;margin:6px 0">No shops within ${r} km yet</div><div style="color:var(--text-muted);font-size:14px;margin-bottom:14px">Try another location or a wider distance. Searching for products still covers every store.</div><button class="btn-primary" onclick="changeLocation()">Change location</button> <button class="btn-secondary" onclick="showView('browse',document.getElementById('nav-browse'))">Browse all shops</button></div>`;
+    AuroraNearby.renderSpiral(document.getElementById('atom-scene'), NEARBY, escapeHtml);
+  }catch(err){
+    document.getElementById('nearby-grid').innerHTML = `<div style="padding:20px;color:var(--text-dim);font-size:13px">Couldn't load shops: ${escapeHtml(err.message)}</div>`;
+  }
 }
+function changeLocation(){ AuroraNearby.openPicker(()=>loadNearby()); }
+function detectLocation(){ changeLocation(); }
 
 async function init(){
   try {
-    const { shops } = await AuroraAPI.get('/shops');
+    const { shops } = await AuroraAPI.get('/shops');   // every store — used by Browse, Trending, New
     SHOPS = shops;
-    buildAtomNodes();
-    renderGrid('nearby-grid', SHOPS);
   } catch (err) {
-    document.getElementById('nearby-grid').innerHTML = `<div style="padding:20px;color:var(--text-dim);font-size:13px">Couldn't load shops: ${escapeHtml(err.message)}</div>`;
+    document.getElementById('browse-grid').innerHTML = `<div style="padding:20px;color:var(--text-dim);font-size:13px">Couldn't load shops: ${escapeHtml(err.message)}</div>`;
   }
+  await loadNearby();
+  const qs=new URLSearchParams(location.search);
+  if(qs.get('view')==='browse'){ showView('browse',document.getElementById('nav-browse')); document.querySelectorAll('#app-tabbar a').forEach(a=>a.classList.toggle('on',a.dataset.v==='browse')); if(qs.get('q')){ const i=document.getElementById('search-input'); i.value=qs.get('q'); doSearch(i.value);} }
   const user = await AuroraAuth.refresh();
   if (user) {
     document.getElementById('nav-account-link').textContent = user.role === 'seller' ? 'Seller Hub' : 'My Account';

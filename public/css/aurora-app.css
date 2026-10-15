@@ -210,3 +210,10 @@ html[data-theme="dark"] .hero-title { background:linear-gradient(135deg,#F1EDFF 
   .app-tabbar .sidebar-badge { position:absolute; top:-2px; left:56%; background:var(--aurora-green) !important; color:#fff !important; font-size:10px; min-width:16px; text-align:center; padding:0 4px !important; line-height:16px; }
 }
 #atk-fab { background:var(--grad) !important; box-shadow:0 10px 24px rgba(109,62,242,.4) !important; }
+.atom-core { width:92px !important; height:92px !important; }
+.orbit-ring-1 { width:224px !important; height:224px !important; margin:-112px !important; }
+.orbit-ring-2 { width:336px !important; height:336px !important; margin:-168px !important; }
+.orbit-ring-3 { width:452px !important; height:452px !important; margin:-226px !important; }
+@media (max-width:640px){ .atom-scene{width:340px!important;height:340px!important} .orbit-ring-1{width:147px!important;height:147px!important;margin:-73px!important} .orbit-ring-2{width:220px!important;height:220px!important;margin:-110px!important} .orbit-ring-3{width:296px!important;height:296px!important;margin:-148px!important} .atom-core{width:72px!important;height:72px!important} .shop-node-inner{width:54px!important;height:54px!important} }
+.search-bar-wrap { position:relative; }
+.search-icon { position:absolute !important; left:18px; top:50%; transform:translateY(-50%); z-index:2; pointer-events:none; }

@@ -119,6 +119,9 @@
           <div class="form-group"><label class="form-label">City</label><input class="form-input" id="s-city" maxlength="60"></div>
           <div class="form-group"><label class="form-label">Area</label><input class="form-input" id="s-area" maxlength="60"></div>
           <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="s-address" maxlength="200"></div>
+          <div class="form-group full"><label class="form-label">Map position (so nearby buyers find you)</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn-secondary" id="s-geo">📍 Use my current location</button><button type="button" class="btn-ghost" id="s-geo-clear" style="display:none">Remove</button><span class="form-hint" id="s-geo-status"></span></div>
+            <div class="form-hint">Tap this while you are at your shop. Buyers never see exact coordinates — only roughly how far you are.</div></div>
           <div class="form-group full"><label class="form-label">Open days</label><div class="st-days" id="s-days"></div></div>
           <div class="form-group"><label class="form-label">Opens</label><input class="form-input" type="time" id="s-open"></div>
           <div class="form-group"><label class="form-label">Closes</label><input class="form-input" type="time" id="s-close"></div>
@@ -163,6 +166,7 @@
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/app.js"></script>
+<script src="js/nearby.js"></script>
 <script src="js/aurora-bg.js"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -239,8 +243,10 @@ function buildStatic() {
   $('s-cat').addEventListener('change', paintPreview);
 }
 
+function geoStatus(){ const has = geoLat !== null && geoLng !== null; $('s-geo-status').textContent = has ? '✓ Position saved' : 'Not set yet — buyers can only find you by city.'; $('s-geo-clear').style.display = has ? '' : 'none'; }
 function fillShop() {
   const s = SHOP;
+  geoLat = s.lat ?? null; geoLng = s.lng ?? null; geoStatus();
   $('s-name').value = s.name || ''; $('s-tagline').value = s.tagline || ''; $('s-emoji').value = s.emoji || '🏪'; $('s-desc').value = s.description || '';
   if (s.category && ![...$('s-cat').options].some(o => o.value === s.category || o.text === s.category)) $('s-cat').add(new Option(s.category, s.category));
   $('s-cat').value = s.category || 'Other';
@@ -254,6 +260,21 @@ function fillShop() {
   paintPreview();
 }
 
+let geoLat = null, geoLng = null;
+document.addEventListener('click', async e => {
+  if (e.target.id === 's-geo') {
+    e.target.disabled = true; $('s-geo-status').textContent = 'Getting location…';
+    try {
+      const p = await AuroraLoc.detect(); geoLat = p.lat; geoLng = p.lng;
+      const n = await AuroraLoc.reverse(p.lat, p.lng);
+      if (n.city && !$('s-city').value.trim()) $('s-city').value = n.city;
+      if (n.area && !$('s-area').value.trim()) $('s-area').value = n.area;
+      geoStatus(); $('s-geo-status').textContent = '✓ Position captured — press Save to keep it.';
+    } catch (err) { $('s-geo-status').textContent = err.message; }
+    e.target.disabled = false;
+  }
+  if (e.target.id === 's-geo-clear') { geoLat = null; geoLng = null; geoStatus(); $('s-geo-status').textContent = 'Removed — press Save to confirm.'; }
+});
 function saveShop() {
   return guarded($('s-save'), async () => {
     const socials = {}; document.querySelectorAll('[data-social]').forEach(i => (socials[i.dataset.social] = i.value.trim()));
@@ -263,7 +284,7 @@ function saveShop() {
       openDays: [...document.querySelectorAll('[data-day]:checked')].map(c => c.dataset.day),
       openTime: $('s-open').value, closeTime: $('s-close').value,
       deliveryHome: $('s-home').checked, deliveryPickup: $('s-pickup').checked, payOnDelivery: $('s-pod').checked,
-      color, socials,
+      color, socials, lat: geoLat, lng: geoLng,
     };
     const { shop } = await AuroraAPI.patch('/shops/' + SHOP.id, body);
     SHOP = shop; fillShop(); showToast('✓ Shop saved');

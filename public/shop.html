@@ -320,6 +320,7 @@ async function init(){
     const { products } = await AuroraAPI.get(`/products/shop/${shop.id}`);
     PRODUCTS = products;
     renderProducts();
+    const wantProduct = Number(params.get('product')); if (wantProduct && PRODUCTS.some(p => p.id === wantProduct)) openProductModal(wantProduct);
   } catch (err) {
     document.getElementById('shop-content').style.display='none';
     document.getElementById('shop-not-found').style.display='';

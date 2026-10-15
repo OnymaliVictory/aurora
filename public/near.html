@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme_v2")||"light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Shops near you — Aurora</title>
+<link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/aurora-app.css">
+<style>
+.near-wrap{max-width:900px;margin:0 auto;padding:96px 20px 80px;position:relative;z-index:1}
+.ask{max-width:520px;margin:6vh auto 0;text-align:center;padding:36px 28px}
+.ask-pin{width:92px;height:92px;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:42px;background:var(--grad);box-shadow:0 16px 40px rgba(109,62,242,.35);position:relative}
+.ask-pin::after{content:'';position:absolute;inset:-12px;border-radius:50%;border:2px solid rgba(109,62,242,.25);animation:askPulse 2.2s ease-out infinite}
+@keyframes askPulse{0%{transform:scale(.85);opacity:1}100%{transform:scale(1.35);opacity:0}}
+.ask h1{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:10px}
+.ask p{color:var(--text-muted);font-size:15.5px;line-height:1.65;margin-bottom:24px}
+.ask .steps-mini{display:flex;flex-direction:column;gap:10px;text-align:left;margin:0 auto 26px;max-width:380px}
+.ask .steps-mini div{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--text-primary)}
+.ask .steps-mini b{flex:0 0 28px;height:28px;border-radius:50%;background:var(--glass-hover);color:var(--aurora-green);display:flex;align-items:center;justify-content:center;font-size:13px}
+.ask .alt{margin-top:14px;display:block;font-weight:700;color:var(--aurora-green);background:none;border:none;font-size:14.5px;cursor:pointer}
+.ask .fine{margin-top:20px;font-size:12.5px;color:var(--text-dim);line-height:1.5}
+.err{color:#E5484D;font-size:13.5px;margin:0 0 14px;line-height:1.5}
+.res-head{text-align:center;margin-bottom:6px}
+.res-head h1{font-size:clamp(24px,4vw,32px);font-weight:800;letter-spacing:-.5px}
+.loc-pill{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:8px 16px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-border);font-weight:600;font-size:14px;box-shadow:var(--shadow-card);cursor:pointer}
+.loc-pill span.chg{color:var(--aurora-green);font-weight:700}
+.sub-links{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:14px 0 8px}
+.sub-links a,.sub-links button{font-size:13.5px;font-weight:700;color:var(--aurora-green);background:none;border:none;cursor:pointer}
+.count{text-align:center;color:var(--text-muted);font-size:14px;margin-bottom:6px}
+.empty{text-align:center;max-width:460px;margin:28px auto;padding:30px 24px}
+.empty h2{font-size:20px;font-weight:800;margin:10px 0 6px}.empty p{color:var(--text-muted);font-size:14.5px;margin-bottom:18px;line-height:1.6}
+.empty .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.dist-tag{font-size:12px;font-weight:700;color:var(--aurora-green);background:var(--glass-hover);padding:3px 9px;border-radius:999px;display:inline-block;margin-top:8px}
+.skel{text-align:center;color:var(--text-muted);padding:80px 0}
+.spin{width:38px;height:38px;border-radius:50%;border:4px solid var(--glass-hover);border-top-color:var(--aurora-green);margin:0 auto 14px;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="buyer.html" class="nav-link">Browse &amp; Search</a>
+    <a href="near.html" class="nav-link" style="color:var(--aurora-green)!important">Shops Near Me</a>
+    <a href="auth.html" class="btn-primary" id="nav-account-link">Sign In</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+</nav>
+
+<main class="near-wrap">
+  <!-- 1) Ask for permission -->
+  <section id="s-ask" class="glass-card ask" style="display:none">
+    <div class="ask-pin">📍</div>
+    <h1>Find shops around you</h1>
+    <p>Allow your location and Aurora will show the shops closest to you, so you can message them, visit them or get your order delivered fast.</p>
+    <div class="steps-mini">
+      <div><b>1</b><span>Tap <strong>Allow location</strong> below.</span></div>
+      <div><b>2</b><span>Choose <strong>Allow</strong> when your phone or browser asks.</span></div>
+      <div><b>3</b><span>See the shops near you and pick one to contact.</span></div>
+    </div>
+    <div id="ask-err" class="err" style="display:none"></div>
+    <button class="btn-full" id="btn-allow" type="button">📍 Allow location</button>
+    <button class="alt" id="btn-type" type="button">Or type my area instead</button>
+    <div class="fine">🔒 Your location is saved only on this device and is used just to find nearby shops. When you search for a product, Aurora searches every store.</div>
+  </section>
+
+  <!-- 2) Working -->
+  <section id="s-load" class="skel" style="display:none"><div class="spin"></div><div id="load-msg">Finding shops near you…</div></section>
+
+  <!-- 3) Results -->
+  <section id="s-res" style="display:none">
+    <div class="res-head">
+      <h1>Shops near you</h1>
+      <div class="loc-pill" id="loc-pill" role="button" tabindex="0">📍 <span id="loc-label">—</span> <span class="chg">Change</span></div>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="atom-scene" id="atom-scene" style="margin-top:34px;margin-bottom:6px">
+      <div class="orbit-ring orbit-ring-1"></div><div class="orbit-ring orbit-ring-2"></div><div class="orbit-ring orbit-ring-3"></div>
+      <div class="atom-core" onclick="document.getElementById('list').scrollIntoView({behavior:'smooth'})" style="cursor:pointer"><div class="atom-core-text">AURORA</div><div class="atom-core-sub">NEAR YOU</div></div>
+    </div>
+    <div class="sub-links">
+      <a href="buyer.html?view=browse">🔍 Search products in all stores</a>
+      <button type="button" id="btn-change">📍 Change location</button>
+    </div>
+    <div id="empty" class="glass-card empty" style="display:none">
+      <div style="font-size:40px">🔭</div>
+      <h2 id="empty-title">No shops here yet</h2>
+      <p id="empty-text">We couldn’t find any shops in this area.</p>
+      <div class="row"><button class="btn-primary" id="btn-wider" type="button">Search wider</button><button class="btn-secondary" id="btn-change2" type="button">Change location</button><a class="btn-secondary" href="buyer.html?view=browse">Browse all shops</a></div>
+    </div>
+    <div class="nearby-wrap" id="list-wrap" style="max-width:none"><div class="nearby-title" id="list-title">Shops near you</div><div class="shops-grid" id="list"></div></div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/nearby.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const show = id => ['s-ask', 's-load', 's-res'].forEach(s => $(s).style.display = s === id ? '' : 'none');
+function isOpen(s){ try{ const d=s.openDays||[], n=new Date(); if(d.length&&!d.includes(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][n.getDay()]))return false; const [oh,om]=(s.openTime||'00:00').split(':').map(Number),[ch,cm]=(s.closeTime||'23:59').split(':').map(Number),m=n.getHours()*60+n.getMinutes(); return m>=oh*60+om&&m<=ch*60+cm; }catch{return true;} }
+function card(s){
+  return `<a href="shop.html?slug=${encodeURIComponent(s.slug)}" class="shop-card">
+    <div class="shop-card-icon">${escapeHtml(s.emoji||'🏪')}</div><div class="shop-card-name">${escapeHtml(s.name)}</div>
+    <div class="shop-card-cat">${escapeHtml(s.category||'')}</div>
+    <div class="shop-card-meta"><span class="shop-card-dist">📍 ${escapeHtml(s.area||s.city||'Nearby')}</span><span class="shop-card-rating">★ ${s.reviewCount?Number(s.rating).toFixed(1):'New'}</span></div>
+    <div class="status-row"><span class="status-dot" style="background:${isOpen(s)?'#16A34A':'var(--text-dim)'}"></span><span style="font-size:11.5px;color:var(--text-muted)">${isOpen(s)?'Open now':'Closed'}</span></div>
+    <span class="dist-tag">${escapeHtml(AuroraNearby.distLabel(s))}</span></a>`;
+}
+async function load(){
+  const loc = AuroraLoc.get(); if(!loc) return show('s-ask');
+  show('s-load');
+  try{
+    const shops = await AuroraNearby.fetchShops(loc);
+    $('loc-label').textContent = loc.label || 'Your location';
+    const r = AuroraLoc.radius();
+    show('s-res');
+    $('count').textContent = shops.length ? `${shops.length} shop${shops.length===1?'':'s'} within ${r} km` : '';
+    $('empty').style.display = shops.length ? 'none' : '';
+    $('list-wrap').style.display = shops.length ? '' : 'none';
+    $('atom-scene').style.display = shops.length ? '' : 'none';
+    if(!shops.length){
+      $('empty-title').textContent = `No shops within ${r} km yet`;
+      $('empty-text').textContent = r < 50 ? 'Try a wider search, or change your location. Search for products still covers every store.' : 'Aurora is still growing in your area. You can browse every store, or try another location.';
+      $('btn-wider').style.display = r < 50 ? '' : 'none';
+    } else { $('list').innerHTML = shops.map(card).join(''); AuroraNearby.renderSpiral($('atom-scene'), shops, escapeHtml); }
+  }catch(err){ show('s-ask'); $('ask-err').style.display=''; $('ask-err').textContent='Couldn’t load shops: '+err.message; }
+}
+async function allow(){
+  const b=$('btn-allow'); b.disabled=true; b.textContent='Waiting for your permission…'; $('ask-err').style.display='none';
+  try{ await AuroraLoc.useMyLocation(); await load(); }
+  catch(err){ $('ask-err').style.display=''; $('ask-err').textContent=err.message; }
+  b.disabled=false; b.textContent='📍 Allow location';
+}
+$('btn-allow').onclick = allow;
+$('btn-type').onclick = () => AuroraNearby.openPicker(load);
+['btn-change','btn-change2','loc-pill'].forEach(id => $(id).onclick = () => AuroraNearby.openPicker(load));
+$('btn-wider').onclick = () => { const r=AuroraLoc.radius(); AuroraLoc.setRadius(r<10?10:r<25?25:50); load(); };
+window.addEventListener('resize', () => { if($('s-res').style.display!=='none'){ const l=[...document.querySelectorAll('#list .shop-card')]; } });
+(async()=>{ const u = await AuroraAuth.refresh(); if(u){ $('nav-account-link').textContent = u.role==='seller'?'Seller Hub':'My Account'; $('nav-account-link').href = u.role==='seller'?'seller.html':'settings.html'; } })();
+load();
+</script>
+<script src="js/aurora-bg.js"></script>
+</body></html>
