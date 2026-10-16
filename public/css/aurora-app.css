@@ -46,8 +46,8 @@ html[data-theme="dark"] body::before { background:
     radial-gradient(520px 520px at 100% -6%, rgba(45,226,180,.14), transparent 70%),
     radial-gradient(480px 480px at -8% 20%, rgba(139,92,246,.2), transparent 70%)!important; }
 #aurora-canvas, .hero-orbs { display:none !important; }
-.rel, .app-layout, .navbar { position:relative; z-index:1; }
-.navbar { position:fixed; }
+.rel, .app-layout { position:relative; z-index:1; }
+.navbar { position:fixed; z-index:100; }  /* must stay above page content or the header can't be tapped */
 
 /* --- headings: no more serif / spaced caps ----------------------------- */
 .nav-logo, .auth-logo-text, .sidebar-logo-text, .footer-logo {
