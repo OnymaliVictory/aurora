@@ -191,8 +191,6 @@ html[data-theme="dark"] .hero-title { background:linear-gradient(135deg,#F1EDFF 
 }
 
 /* --- fixes after visual review ----------------------------------------- */
-.form-input, .form-select { width:100%; min-width:0; }
-.form-row > *, .checkout-grid > * { min-width:0; }
 .checkout-form-panel h3, .order-summary-panel h3, .atom-header h2, .nearby-title, .panel-title, .summary-total-label, .kpi-label {
   font-family:'Inter',sans-serif !important; letter-spacing:0 !important; text-transform:none !important; font-size:18px !important; font-weight:800 !important; color:var(--text-primary) !important; }
 .nearby-title::after { display:none !important; }

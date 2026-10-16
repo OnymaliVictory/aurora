@@ -1,0 +1,29 @@
+/* Aurora — structural rules used in BOTH themes. (The purple "app look" lives in aurora-app.css and is
+   switched on for light mode only; dark mode keeps the original aurora design from style.css.) */
+
+/* fallbacks so pages written with these tokens also work in the original dark theme */
+html[data-theme="dark"] { --grad:linear-gradient(135deg,var(--aurora-green),var(--aurora-teal)); --shadow-card:0 10px 30px rgba(0,0,0,.35); }
+
+.form-input, .form-select { width:100%; min-width:0; }
+.form-row > *, .checkout-grid > * { min-width:0; }
+
+/* spiral of shops needs rings a little wider than the first design so nodes clear the centre */
+.atom-core { width:92px !important; height:92px !important; }
+.orbit-ring-1 { width:224px !important; height:224px !important; margin:-112px !important; }
+.orbit-ring-2 { width:336px !important; height:336px !important; margin:-168px !important; }
+.orbit-ring-3 { width:452px !important; height:452px !important; margin:-226px !important; }
+@media (max-width:640px){ .atom-scene{width:340px!important;height:340px!important} .orbit-ring-1{width:147px!important;height:147px!important;margin:-73px!important} .orbit-ring-2{width:220px!important;height:220px!important;margin:-110px!important} .orbit-ring-3{width:296px!important;height:296px!important;margin:-148px!important} .atom-core{width:72px!important;height:72px!important} .shop-node-inner{width:54px!important;height:54px!important} }
+
+/* phone tab bar (buyer page) */
+.app-tabbar { display:none; }
+@media (max-width: 860px) {
+  .main-content { padding-bottom:110px !important; }
+  .app-tabbar { display:flex; position:fixed; left:0; right:0; bottom:0; z-index:90; padding:8px 6px calc(10px + env(safe-area-inset-bottom)); justify-content:space-around; }
+  html[data-theme="dark"] .app-tabbar { background:var(--panel-solid); border-top:1px solid var(--glass-border); box-shadow:0 -8px 24px rgba(0,0,0,.3); }
+  .app-tabbar a { position:relative; flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; font-weight:600; color:var(--text-muted); padding:4px 0; border-radius:12px; }
+  .app-tabbar a .ti { font-size:21px; line-height:1; }
+  .app-tabbar a.on { color:var(--aurora-green); }
+  .app-tabbar .sidebar-badge { position:absolute; top:-2px; left:56%; font-size:10px; min-width:16px; text-align:center; padding:0 4px !important; line-height:16px; }
+  #atk-fab { bottom:84px !important; right:14px !important; width:48px !important; height:48px !important; font-size:22px !important; }
+  #atk-panel { bottom:142px !important; right:12px !important; }
+}

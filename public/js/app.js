@@ -37,6 +37,7 @@ const AuroraTheme = {
   get() { try { return localStorage.getItem(this.key) || 'light'; } catch { return 'light'; } },
   apply(theme) {
     document.documentElement.setAttribute('data-theme', theme);
+    const appCss = document.getElementById('aurora-app-css'); if (appCss) appCss.disabled = theme !== 'light'; // purple app look = light mode only
     try { localStorage.setItem(this.key, theme); } catch {}
     document.querySelectorAll('.theme-toggle').forEach(btn => {
       btn.textContent = theme === 'light' ? '🌙' : '☀️';
