@@ -22,7 +22,7 @@ function safeSearch(input, max = 60) {
 // a slug that is also one of our own pages or system paths.
 const RESERVED_SLUGS = new Set([
   'index','buyer','seller','auth','admin','api','checkout','track','settings','create-shop',
-  'reset-password','login','logout','register','signup','signin','terms','privacy','refund',
+  'reset-password','login','logout','register','signup','signin','terms','privacy','transfer','transfers','receipt','refund',
   'help','support','about','contact','shop','shops','products','product','orders','order',
   'cart','account','profile','static','public','css','js','assets','images','img','sw',
   'www','mail','app','dashboard','aurora','root','status','blog','docs','null','undefined',

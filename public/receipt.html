@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="robots" content="noindex">
+<title>Aurora — Receipt</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eef0f6;color:#111;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.bar{max-width:640px;margin:0 auto;padding:16px;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.bar a,.bar button{font:inherit;font-size:14px;padding:10px 16px;border-radius:10px;border:1px solid #c5c9d6;background:#fff;color:#111;text-decoration:none;cursor:pointer}
+.bar .go{background:#6d4aff;color:#fff;border-color:#6d4aff}
+.paper{max-width:640px;margin:0 auto 40px;background:#fff;border-radius:16px;padding:28px 26px;box-shadow:0 6px 30px rgba(20,20,60,.12);position:relative;overflow:hidden}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.brand{font-size:22px;font-weight:800;letter-spacing:3px;color:#6d4aff}
+.kind{font-size:11px;letter-spacing:2px;color:#777;margin-top:4px}
+.stamp{border:3px solid #16a34a;color:#16a34a;font-weight:800;letter-spacing:3px;padding:6px 14px;border-radius:8px;transform:rotate(-4deg);font-size:18px}
+.stamp.cod{border-color:#a16207;color:#a16207;font-size:14px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;margin:22px 0;font-size:13px}
+.meta small{display:block;color:#888;font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px}
+.meta b{font-size:14px;word-break:break-word}
+.track{background:#f3f0ff;border:1px dashed #6d4aff;border-radius:12px;padding:14px;text-align:center;margin:6px 0 20px}
+.track small{font-size:11px;letter-spacing:2px;color:#6d4aff}.track div{font-size:24px;font-weight:800;letter-spacing:3px;margin-top:4px;word-break:break-all}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#888;text-align:left;padding:8px 0;border-bottom:1px solid #e5e7ef}
+td{padding:10px 0;border-bottom:1px solid #f0f1f6;vertical-align:top}.r{text-align:right;white-space:nowrap}
+.tot td{border:none;padding:5px 0}.tot .grand td{font-size:18px;font-weight:800;padding-top:10px;border-top:2px solid #111}
+.foot{margin-top:22px;font-size:12px;color:#666;line-height:1.6}
+.err{max-width:640px;margin:40px auto;padding:20px;text-align:center;color:#b91c1c}
+@media (max-width:480px){.paper{border-radius:0;padding:22px 16px}.meta{grid-template-columns:1fr}}
+@media print{body{background:#fff}.bar{display:none}.paper{box-shadow:none;border-radius:0;margin:0;max-width:none}}
+</style>
+</head>
+<body>
+<div class="bar"><a href="buyer.html" id="back">← Back</a><span><button onclick="window.print()" class="go">Download / Print PDF</button></span></div>
+<div id="out"><div class="err" style="color:#666">Loading receipt…</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script>
+const N = n => '₦' + Math.round(Number(n) || 0).toLocaleString('en-NG');
+const E = s => escapeHtml(s == null ? '' : String(s));
+const when = d => new Date(d).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+async function init() {
+  const user = await AuroraAuth.requireAuth(); if (!user) return;
+  const id = Number(new URLSearchParams(location.search).get('o'));
+  const out = document.getElementById('out');
+  if (!Number.isInteger(id) || id < 1) { out.innerHTML = '<div class="err">No order selected.</div>'; return; }
+  try {
+    const { receipt: r, role } = await AuroraAPI.get('/transfers/receipt/' + id);
+    if (role === 'seller') document.getElementById('back').href = 'seller.html';
+    document.title = 'Aurora receipt ' + r.receiptNo;
+    const rows = r.items.map(i => `<tr><td>${E(i.name)}${i.size ? ' <span style="color:#888">(' + E(i.size) + ')</span>' : ''}</td><td class="r">${i.qty}</td><td class="r">${N(i.price)}</td><td class="r">${N(i.price * i.qty)}</td></tr>`).join('');
+    out.innerHTML = `<div class="paper">
+      <div class="top"><div><div class="brand">✦ AURORA</div><div class="kind">PAYMENT RECEIPT</div></div>
+        <div class="stamp ${r.paid ? '' : 'cod'}">${r.paid ? 'PAID' : 'PAY ON DELIVERY'}</div></div>
+      <div class="meta">
+        <div><small>Receipt no.</small><b>${E(r.receiptNo)}</b></div>
+        <div><small>${r.paid ? 'Payment confirmed' : 'Order placed'}</small><b>${E(when(r.issuedAt))}</b></div>
+        <div><small>Order</small><b>#${E(r.orderNo)}</b></div>
+        <div><small>Ordered</small><b>${E(when(r.orderedAt))}</b></div>
+        <div><small>Seller</small><b>${E(r.shop ? r.shop.name : '')}</b>${r.shop && r.shop.phone ? '<div style="font-size:12px;color:#666">' + E(r.shop.phone) + '</div>' : ''}</div>
+        <div><small>Buyer</small><b>${E(r.buyerName)}</b></div>
+        <div><small>Payment method</small><b>${E(r.method)}</b></div>
+        ${r.reference ? `<div><small>Payment reference</small><b>${E(r.reference)}</b></div>` : ''}
+        ${r.paidTo ? `<div style="grid-column:1/-1"><small>Paid to</small><b>${E(r.paidTo.accountName)}</b><div style="font-size:12px;color:#666">${E(r.paidTo.bankName)} · ${E(r.paidTo.accountMasked)}</div></div>` : ''}
+        ${r.delivery.address ? `<div style="grid-column:1/-1"><small>${r.delivery.type === 'pickup' ? 'Pickup' : 'Delivery to'}</small><b>${r.delivery.type === 'pickup' ? 'Store pickup' : E(r.delivery.address)}</b></div>` : ''}
+      </div>
+      ${r.trackingId ? `<div class="track"><small>TRACKING ID</small><div>${E(r.trackingId)}</div></div>` : ''}
+      <table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr></thead><tbody>${rows}</tbody></table>
+      <table class="tot" style="margin-top:10px"><tr><td>Subtotal</td><td class="r">${N(r.subtotal)}</td></tr><tr><td>Delivery</td><td class="r">${N(r.delivery.fee)}</td></tr><tr class="grand"><td>Total ${r.paid ? 'paid' : 'to pay'}</td><td class="r">${N(r.total)}</td></tr></table>
+      <div class="foot">Track your order any time at <b>${E(location.host)}/track.html</b> with your tracking ID. Keep this receipt — if something goes wrong with your order, quote the receipt number and tracking ID to Aurora support.</div>
+    </div>`;
+  } catch (e) { out.innerHTML = `<div class="err">${E(e.message)}</div>`; }
+}
+init();
+</script>
+</body></html>

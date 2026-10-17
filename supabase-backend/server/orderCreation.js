@@ -6,6 +6,7 @@ const DELIVERY_FEES = { standard: 1500, express: 3500, pickup: 0 };
 function orderOut(row, extra = {}) {
   return {
     id: row.id,
+    trackingId: row.tracking_id || null,
     buyer_id: row.buyer_id,
     shop_id: row.shop_id,
     status: row.status,
@@ -24,9 +25,13 @@ function orderOut(row, extra = {}) {
     paymentStatus: row.payment_status,
     payoutStatus: row.payout_status,
     paystackReference: row.paystack_reference,
+    trackingId: row.tracking_id || null,
     commissionAmount: row.commission_amount != null ? Number(row.commission_amount) : null,
     payoutAmount: row.payout_amount != null ? Number(row.payout_amount) : null,
     markupAmount: Number(row.markup_amount || 0),
+    transferStatus: row.transfer_status || null,
+    transferReference: row.transfer_reference || null,
+    transferRejectReason: row.transfer_reject_reason || null,
     deliveredAt: row.delivered_at,
     disputed: row.disputed,
     paidAt: row.paid_at,
@@ -53,7 +58,7 @@ function orderOutForSeller(row, extra = {}) {
 // 'unpaid' regardless of paymentMethod; the caller decides what happens
 // next (Pay on Delivery just leaves it unpaid, online payment moves it to
 // 'paid' once Paystack confirms).
-async function createOrdersFromCart(buyerId, buyerPhone, data) {
+async function createOrdersFromCart(buyerId, buyerPhone, data, opts = {}) {
   const { items, deliveryType, address, city, area, phone, paymentMethod, note } = data || {};
   if (!Array.isArray(items) || items.length === 0) {
     throw Object.assign(new Error('Your cart is empty.'), { status: 400 });
@@ -75,9 +80,16 @@ async function createOrdersFromCart(buyerId, buyerPhone, data) {
     byShop[product.shop_id].push({ product, qty, size: item.size || '' });
   }
 
+  // Lets a caller refuse the whole cart before anything is created (e.g. a shop that cannot take bank transfers).
+  if (opts.beforeCreate) await opts.beforeCreate(Object.keys(byShop));
+
   // Prices are ALWAYS recomputed here from the database + current admin settings.
   // Whatever price the browser's cart shows is ignored.
-  const { markupPercent, commissionPercent } = await getSettings({ fresh: true });
+  const settings = await getSettings({ fresh: true });
+  // Direct bank transfer: the buyer pays the shop's own account, so Aurora adds no markup and takes no commission.
+  const direct = !!(data && data.directPay);
+  const markupPercent = direct ? 0 : settings.markupPercent;
+  const commissionPercent = direct ? 0 : settings.commissionPercent;
   const fee = DELIVERY_FEES[deliveryType] ?? DELIVERY_FEES.standard;
   const createdOrders = [];
 

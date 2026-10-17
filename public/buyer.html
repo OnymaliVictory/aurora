@@ -326,7 +326,11 @@ async function loadMyOrders(){
     list.innerHTML = orders.map(o => {
       const thumb = (o.items&&o.items[0]&&o.items[0].imageUrl) ? `<img src="${o.items[0].imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">` : ((o.items&&o.items[0]&&o.items[0].emoji)||'📦');
       const canDispute = o.status === 'delivered' && o.paymentStatus === 'paid' && o.payoutStatus === 'pending' && !o.disputed;
-      const paymentHint = o.paymentMethod === 'pod'
+      const manual = o.paymentMethod === 'manual';
+      const manualOpen = manual && o.paymentStatus !== 'paid' && o.status !== 'cancelled';
+      const paymentHint = manual
+        ? (manualOpen ? `<div style="font-size:11px;color:${o.transferStatus==='rejected'?'var(--aurora-pink)':'#fbbf24'};margin-top:4px">${{ proof_submitted:'Receipt sent — waiting for the shop to confirm', rejected:'The shop could not confirm your payment — upload a new receipt' }[o.transferStatus] || 'Waiting for your bank transfer'}</div>` : '')
+        : o.paymentMethod === 'pod'
         ? ''
         : (o.paymentStatus !== 'paid' ? '<div style="font-size:11px;color:#fbbf24;margin-top:4px">Payment not yet confirmed</div>'
           : o.disputed ? '<div style="font-size:11px;color:var(--aurora-pink);margin-top:4px">Dispute reported — under review</div>' : '');
@@ -341,6 +345,8 @@ async function loadMyOrders(){
         </div>
         <div style="text-align:right">
           <div style="font-family:'Orbitron',sans-serif;color:var(--aurora-green);font-weight:600;font-size:13px">₦${o.total.toLocaleString()}</div>
+          ${manualOpen?`<a href="transfer.html?o=${o.id}" class="btn-primary" style="margin-top:7px;font-size:11.5px;padding:6px 13px;display:block;text-decoration:none">${o.transferStatus==='proof_submitted'?'View payment':'Pay / upload receipt'}</a>`:''}
+          ${(o.paymentStatus==='paid'||o.paymentMethod==='pod')&&o.status!=='cancelled'?`<a href="receipt.html?o=${o.id}" class="btn-secondary" style="margin-top:7px;font-size:11.5px;padding:5px 13px;display:block;text-decoration:none">🧾 Receipt</a>`:''}
           ${o.shop?`<a href="shop.html?slug=${o.shop.slug}" class="btn-secondary" style="margin-top:7px;font-size:11.5px;padding:5px 13px;display:inline-block">View Shop</a>`:''}
           ${canDispute?`<button class="btn-secondary" style="margin-top:7px;font-size:11.5px;padding:5px 13px;display:block;color:var(--aurora-pink);border-color:var(--aurora-pink)" onclick="disputeOrder(${o.id})">Report a Problem</button>`:''}
         </div>

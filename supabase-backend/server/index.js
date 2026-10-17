@@ -13,6 +13,7 @@ const productRoutes = require('../supabase-backend/server/routes/products');
 const orderRoutes = require('../supabase-backend/server/routes/orders');
 const messageRoutes = require('../supabase-backend/server/routes/messages');
 const paymentRoutes = require('../supabase-backend/server/routes/payments');
+const transferRoutes = require('../supabase-backend/server/routes/transfers');
 const cronRoutes = require('../supabase-backend/server/routes/cron');
 
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/transfers', transferRoutes);
 app.use('/api/cron', cronRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found.' }));

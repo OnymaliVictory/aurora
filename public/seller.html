@@ -119,6 +119,7 @@
           </div>
         </div>
       </div>
+      <div class="dash-panel" style="margin-top:18px" id="transfer-account-card"></div>
     </div>
 
     <!-- ANALYTICS VIEW -->
@@ -217,6 +218,8 @@
 <script src="js/supabase-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/app.js"></script>
+<script src="js/receipt-scan.js"></script>
+<script src="js/seller-transfers.js"></script>
 <script src="js/aurora-bg.js"></script>
 <script>
 let myShop = null, myProducts = [], myOrders = [], myConversations = [], activeConvo = null;
@@ -450,6 +453,7 @@ function renderRecentOrders(){
 }
 
 function payoutStatusBadge(o){
+  if (o.paymentMethod === 'manual') return SellerTransfers.badge(o);
   if (o.paymentMethod === 'pod') return `<span class="order-status" style="background:rgba(232,244,255,.1);color:var(--text-dim)">Pay on delivery</span>`;
   if (o.paymentStatus !== 'paid') return `<span class="order-status status-pending">Awaiting payment</span>`;
   const map = {
@@ -480,8 +484,9 @@ function renderAllOrders(){
       </div>
       <div style="text-align:right">
         <div class="order-amount">${fmtNaira(o.total)}</div>
-        ${o.status==='pending'?`<button class="btn-primary" style="margin-top:7px;font-size:12px;padding:6px 14px" onclick="updateOrderStatus(${o.id},'processing')">Start Processing</button>`:''}
-        ${o.status==='processing'?`<button class="btn-primary" style="margin-top:7px;font-size:12px;padding:6px 14px" onclick="updateOrderStatus(${o.id},'delivered')">Mark Delivered</button>`:''}
+        ${SellerTransfers.actions(o)}
+        ${o.status==='pending'&&!SellerTransfers.blocked(o)?`<button class="btn-primary" style="margin-top:7px;font-size:12px;padding:6px 14px" onclick="updateOrderStatus(${o.id},'processing')">Start Processing</button>`:''}
+        ${o.status==='processing'&&!SellerTransfers.blocked(o)?`<button class="btn-primary" style="margin-top:7px;font-size:12px;padding:6px 14px" onclick="updateOrderStatus(${o.id},'delivered')">Mark Delivered</button>`:''}
         <button class="btn-secondary" style="margin-top:7px;font-size:12px;padding:6px 14px;display:block;margin-left:auto" onclick="openOrderChat(${o.id})">💬 Chat</button>
       </div>
     </div>`;
@@ -704,6 +709,7 @@ async function init(){
     renderKpis();
     renderChart();
     loadOrderChats();
+    SellerTransfers.mountAccount();
   } catch (err) {
     showToast(err.message, 'error');
   }

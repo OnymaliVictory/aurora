@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme_v2")||"light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aurora — Pay by bank transfer</title>
+<link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/aurora-app.css" id="aurora-app-css"><script>(function(){var l=document.getElementById("aurora-app-css");if(l)l.disabled=document.documentElement.getAttribute("data-theme")!=="light"})()</script><link rel="stylesheet" href="css/aurora-shared.css">
+</head>
+<body>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="buyer.html" class="nav-link">← My Orders</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+  <button class="hamburger" id="hamburger-btn" onclick="toggleMobileNav()"><span></span><span></span><span></span></button>
+</nav>
+
+<style>
+.tp{max-width:720px;margin:0 auto;padding:96px 16px 120px;position:relative;z-index:1}
+.tp h1{font-size:24px;margin:0 0 6px}.tp .lead{font-size:14px;color:var(--text-muted);margin:0 0 22px;line-height:1.6}
+.tcard{padding:20px;margin-bottom:18px}
+.tcard-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.tcard-title{font-weight:700;font-size:15px}.tcard-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
+.tpill{font-size:11.5px;padding:4px 11px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.tpill.wait{color:#a16207}.tpill.sent{color:#2563eb}.tpill.ok{color:#16a34a}.tpill.bad{color:#dc2626}
+.tstep{display:flex;gap:12px;margin-top:16px}
+.tnum{flex:0 0 26px;height:26px;border-radius:50%;background:var(--aurora-teal);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.tstep-b{flex:1;min-width:0}.tstep-t{font-weight:600;font-size:14px;margin-bottom:6px}
+.tfield{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(128,128,128,.28);margin-bottom:8px;background:rgba(128,128,128,.06)}
+.tfield small{display:block;font-size:11px;color:var(--text-dim);margin-bottom:1px}.tfield b{font-size:15px;word-break:break-all}
+.tfield .big{font-size:22px}.tcopy{flex:0 0 auto;font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid rgba(128,128,128,.4);background:transparent;color:inherit;cursor:pointer}
+.tnote{font-size:12.5px;color:var(--text-muted);line-height:1.55}
+.tdrop{display:block;border:2px dashed rgba(128,128,128,.4);border-radius:12px;padding:18px;text-align:center;cursor:pointer;font-size:13.5px;color:var(--text-muted)}
+.tprev{display:block;max-width:100%;max-height:260px;margin:10px auto 0;border-radius:10px;border:1px solid rgba(128,128,128,.3)}
+.tbanner{padding:11px 13px;border-radius:10px;font-size:13px;line-height:1.5;margin-bottom:12px}
+.tbanner.bad{background:rgba(220,38,38,.1);color:#dc2626}.tbanner.info{background:rgba(37,99,235,.1);color:#2563eb}
+.tchip{display:inline-flex;gap:5px;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;border:1px solid;margin:0 6px 6px 0}
+.tdone{text-align:center;padding:6px 0}.tdone .tick{font-size:42px}.tid{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;letter-spacing:2px;color:var(--aurora-teal);margin:8px 0 14px;word-break:break-all}
+.tbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+</style>
+<div class="tp">
+  <h1>Pay by bank transfer</h1>
+  <p class="lead">Send the exact amount to the shop's account, then upload your receipt. The shop checks its bank app and confirms — your order and Aurora receipt are created the moment it does.</p>
+  <div id="tp-list"><div class="glass-card tcard" style="color:var(--text-dim)">Loading…</div></div>
+</div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/receipt-scan.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+const naira = n => '\u20a6' + Math.round(Number(n) || 0).toLocaleString('en-NG');
+const E = s => escapeHtml(s == null ? '' : String(s));
+let ORDERS = {}; let picked = {}; let timer = null;
+
+function copy(text, btn){
+  const done = () => { const o = btn.textContent; btn.textContent = 'Copied \u2713'; setTimeout(() => btn.textContent = o, 1400); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => fallback());
+  else fallback();
+  function fallback(){ const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch {} t.remove(); }
+}
+const field = (label, value, big) => `<div class="tfield"><div style="min-width:0"><small>${label}</small><b class="${big ? 'big' : ''}">${E(value)}</b></div><button class="tcopy" data-copy="${E(value)}">Copy</button></div>`;
+
+function pill(o){
+  if (o.paymentStatus === 'paid') return '<span class="tpill ok">Paid \u2713</span>';
+  return { awaiting_proof: '<span class="tpill wait">Waiting for your transfer</span>', proof_submitted: '<span class="tpill sent">Receipt sent \u00b7 waiting for shop</span>', rejected: '<span class="tpill bad">Not confirmed</span>' }[o.transferStatus] || '';
+}
+
+function uploadBlock(o){
+  const left = o.proofsLeft;
+  if (!left) return '<div class="tbanner bad">You have used all uploads for this order. Please message the shop.</div>';
+  return `<label class="tdrop" for="file-${o.id}"><span id="dz-${o.id}">\ud83d\udcf7 Tap to choose your receipt screenshot</span></label>
+    <input type="file" id="file-${o.id}" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="picked_(${o.id}, this)">
+    <img id="prev-${o.id}" class="tprev" style="display:none" alt="Your receipt">
+    <div id="scan-${o.id}" style="margin-top:10px;font-size:13px"></div>
+    <button class="btn-full" id="send-${o.id}" style="margin-top:12px" disabled onclick="sendProof(${o.id})">Send receipt to shop</button>
+    <div class="tnote" style="margin-top:6px">JPG, PNG or WEBP \u00b7 max 4 MB \u00b7 ${left} upload${left === 1 ? '' : 's'} left</div>`;
+}
+
+function card(o){
+  const shop = o.shop ? o.shop.name : 'Shop';
+  let body = '';
+  if (o.paymentStatus === 'paid') {
+    body = `<div class="tdone"><div class="tick">\u2705</div><div style="font-weight:700;margin-top:4px">Payment confirmed by ${E(shop)}</div>
+      <div class="tnote" style="margin-top:8px">Your tracking ID</div><div class="tid">${E(o.trackingId || '')}</div>
+      <div class="tbtns"><a class="btn-primary" style="text-decoration:none" href="receipt.html?o=${o.id}">View Aurora receipt</a>
+      <a class="btn-secondary" style="text-decoration:none;padding:10px 16px;border-radius:12px" href="track.html?id=${encodeURIComponent(o.trackingId || '')}">Track order</a>
+      <button class="btn-secondary" style="padding:10px 16px;border-radius:12px" data-copy="${E(o.trackingId || '')}">Copy ID</button></div></div>`;
+  } else if (o.status === 'cancelled') {
+    body = '<div class="tbanner bad">This order was cancelled. Do not send money for it.</div>';
+  } else {
+    const a = o.account || {};
+    const rejected = o.transferStatus === 'rejected' && o.rejectReason ? `<div class="tbanner bad"><b>${E(shop)} could not confirm your payment:</b> ${E(o.rejectReason)}<br>Fix it and upload a new receipt below.</div>` : '';
+    const sent = o.transferStatus === 'proof_submitted';
+    body = rejected + (sent ? `<div class="tbanner info">\u2713 Receipt sent. ${E(shop)} will check their bank app and confirm \u2014 you'll get a notification. This page updates by itself.</div>` : '') + `
+      <div class="tstep"><div class="tnum">1</div><div class="tstep-b"><div class="tstep-t">Transfer exactly this amount</div>
+        ${field('Amount', naira(o.total), true)}${field('Bank', a.bankName)}${field('Account number', a.accountNumber)}${field('Account name', a.accountName)}
+        <div class="tnote">Use any bank app or USSD. Send the <b>exact</b> amount, no more and no less.</div></div></div>
+      <div class="tstep"><div class="tnum">2</div><div class="tstep-b"><div class="tstep-t">Put this code in the transfer remark</div>
+        ${field('Reference (remark / narration)', o.reference, false)}<div class="tnote">It lets the shop match your payment to this order.</div></div></div>
+      <div class="tstep"><div class="tnum">3</div><div class="tstep-b"><div class="tstep-t">${sent ? 'Sent the wrong picture? Upload again' : 'Upload your receipt'}</div>${uploadBlock(o)}</div></div>`;
+  }
+  const items = (o.items || []).map(i => `${E(i.name)}${i.size ? ' (' + E(i.size) + ')' : ''} \u00d7 ${i.qty}`).join(', ');
+  return `<div class="glass-card tcard" id="tc-${o.id}">
+    <div class="tcard-head"><div><div class="tcard-title">${E(shop)} \u00b7 #AUR-${o.id}</div><div class="tcard-sub">${items}</div></div>${pill(o)}</div>${body}</div>`;
+}
+
+function render(){
+  const ids = Object.keys(ORDERS).map(Number).sort((a, b) => a - b);
+  const list = document.getElementById('tp-list');
+  // keep any half-finished upload when the page refreshes itself
+  const keep = {}; ids.forEach(id => { const f = document.getElementById('file-' + id); if (f && f.files && f.files[0]) keep[id] = f.files[0]; });
+  const open = ids.some(id => keep[id]);
+  if (open && !window.__forceRender) return;
+  list.innerHTML = ids.map(id => card(ORDERS[id])).join('') || '<div class="glass-card tcard">Nothing to pay.</div>';
+  window.__forceRender = false;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-copy]'); if (b) copy(b.getAttribute('data-copy'), b); });
+
+async function picked_(id, input){
+  const f = input.files && input.files[0]; if (!f) return;
+  const o = ORDERS[id]; const prev = document.getElementById('prev-' + id), scan = document.getElementById('scan-' + id), send = document.getElementById('send-' + id);
+  if (f.size > 4 * 1024 * 1024) { showToast('That image is over 4 MB. Take a screenshot instead of a photo.', 'error'); input.value = ''; return; }
+  picked[id] = f; prev.src = URL.createObjectURL(f); prev.style.display = 'block'; document.getElementById('dz-' + id).textContent = '\ud83d\udcf7 ' + f.name + ' \u2014 tap to change';
+  send.disabled = false; scan.innerHTML = '<span style="color:var(--text-dim)">Checking your receipt\u2026 <span id="pct-' + id + '">0</span>%</span>';
+  const r = await AuroraScan.scan(f, o.expected, p => { const el = document.getElementById('pct-' + id); if (el) el.textContent = Math.round(p * 100); });
+  const col = { ok: '#16a34a', bad: '#dc2626', unknown: '#a16207' }, sym = { ok: '\u2713', bad: '\u2717', unknown: '?' };
+  const chips = (r.chips || []).map(c => `<span class="tchip" style="color:${col[c.state]}">${sym[c.state]} ${E(c.label)}</span>`).join('');
+  const msg = { green: 'Looks good \u2014 amount, account and date all match.', yellow: 'We could not confirm everything from the picture. You can still send it \u2014 the shop makes the final check.', red: 'This receipt does not seem to match this payment (amount or date). Make sure you picked the right screenshot.', unreadable: 'We could not read this image. A clearer screenshot helps, but you can still send it.' }[r.verdict];
+  scan.innerHTML = `<div style="font-weight:600;margin-bottom:6px;color:${r.verdict === 'green' ? '#16a34a' : r.verdict === 'red' ? '#dc2626' : '#a16207'}">${msg}</div>${chips}`;
+}
+
+async function sendProof(id){
+  const f = picked[id]; if (!f) return; const btn = document.getElementById('send-' + id);
+  btn.disabled = true; btn.textContent = 'Sending\u2026';
+  try {
+    const fd = new FormData(); fd.append('proof', f, f.name);
+    const { order } = await AuroraAPI.request('/transfers/order/' + id + '/proof', { method: 'POST', body: fd });
+    ORDERS[id] = order; delete picked[id]; window.__forceRender = true; render(); showToast('\u2713 Receipt sent to the shop');
+  } catch (e) { showToast(e.message, 'error'); btn.disabled = false; btn.textContent = 'Send receipt to shop'; }
+}
+
+async function poll(){
+  const pending = Object.values(ORDERS).filter(o => o.paymentStatus !== 'paid' && o.status !== 'cancelled');
+  for (const o of pending) { try { const { order } = await AuroraAPI.get('/transfers/order/' + o.id); if (order.paymentStatus !== o.paymentStatus || order.transferStatus !== o.transferStatus) { ORDERS[o.id] = order; window.__forceRender = !document.querySelector('input[type=file]')?.files?.length; render(); if (order.paymentStatus === 'paid') showToast('\ud83c\udf89 Payment confirmed!'); } } catch {} }
+  if (!pending.length) clearInterval(timer);
+}
+
+async function init(){
+  const user = await AuroraAuth.requireAuth(); if (!user) return;
+  const ids = (new URLSearchParams(location.search).get('o') || '').split(',').map(Number).filter(n => Number.isInteger(n) && n > 0).slice(0, 10);
+  let list = ids;
+  if (!list.length) { // no ids given: show every unpaid transfer order of this buyer
+    try { const { orders } = await AuroraAPI.get('/orders/mine'); list = orders.filter(o => o.paymentMethod === 'manual' && o.paymentStatus !== 'paid' && o.status !== 'cancelled').map(o => o.id); } catch {}
+  }
+  for (const id of list) { try { const { order } = await AuroraAPI.get('/transfers/order/' + id); ORDERS[id] = order; } catch {} }
+  window.__forceRender = true; render();
+  if (!Object.keys(ORDERS).length) document.getElementById('tp-list').innerHTML = '<div class="glass-card tcard" style="text-align:center">No payments waiting. <a href="buyer.html" style="color:var(--aurora-teal)">Back to Aurora</a></div>';
+  timer = setInterval(poll, 15000);
+}
+init();
+</script>
+</body></html>

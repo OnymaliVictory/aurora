@@ -1,36 +1,23 @@
-# Aurora notifications update
+# Bank transfer payments (pay the shop, upload receipt, seller confirms)
 
-Copy each file to the SAME path in your project (new files are marked NEW), then follow the steps.
+## 1. Database (once) — Supabase → SQL Editor → paste supabase-backend/supabase-schema/migration-transfer.sql → Run
+Creates a private table for shop transfer accounts, the new order columns, a safety trigger
+(manual-transfer orders can never be paid out through Paystack), and a PRIVATE storage bucket "payment-proofs".
 
-NEW files
-- migration-notifications.sql            -> run in Supabase SQL Editor (not a project file)
-- supabase-backend/server/notify.js
-- supabase-backend/server/orderNotify.js
-- supabase-backend/server/routes/notifications.js
-- public/sw.js
-- public/js/notify.js
+## 2. Code — copy these files over the same paths in your repo
+public/: checkout.html, buyer.html, seller.html, transfer.html (new), receipt.html (new), js/receipt-scan.js (new), js/seller-transfers.js (new)
+api/index.js, vercel.json
+supabase-backend/server/: transfer.js (new), routes/transfers.js (new), orderCreation.js, orderNotify.js, index.js, security.js
+(vercel.json: if you changed it yourself, only add the 3 CSP changes: 'wasm-unsafe-eval' in script-src, https://cdn.jsdelivr.net in connect-src, worker-src 'self' blob:.)
 
-CHANGED files (small edits; search for the words in quotes to see them)
-- api/index.js                      "notificationRoutes" (2 lines)
-- vercel.json                       second cron "/api/cron/daily-nudges"
-- public/js/app.js                  loader for js/notify.js at the bottom
-- public/shop.html                  "AuroraNotify.mountFollow" (follow button)
-- supabase-backend/server/routes/orders.js     "orderNotify" (new order, seller chat, status change)
-- supabase-backend/server/routes/payments.js   "orderNotify" (card payment confirmed)
-- supabase-backend/server/routes/track.js      "orderNotify" (buyer messages; select now includes shop_id, buyer_id, tracking_id)
-- supabase-backend/server/routes/admin.js      "orderNotify" (support reply)
-- supabase-backend/server/routes/messages.js   "orderNotify" (shop <-> buyer direct messages)
-- supabase-backend/server/routes/products.js   "notifyMany" (new product -> followers)
-- supabase-backend/server/routes/cron.js       "daily-nudges" (cart reminders + older-products picks)
+Then:  git add .  &&  git commit -m "Bank transfer payments with receipt check"  &&  git push
 
-STEPS
-1. Supabase SQL Editor: run migration-notifications.sql
-2. In the folder whose package.json lists express:   npm install web-push
-3. Make push keys:   npx web-push generate-vapid-keys
-4. Vercel -> Settings -> Environment Variables (then redeploy):
-     VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY   (from step 3)
-     VAPID_SUBJECT = mailto:you@yourmail.com
-     APP_URL = https://aurora-wheat-seven.vercel.app
-     RESEND_API_KEY, EMAIL_FROM = Aurora <notifications@yourdomain.com>   (optional until you have a domain)
-     CRON_SECRET  (you already have this)
-5. git add -A ; git commit -m "Notifications" ; git push
+## 3. Before your first real order
+- Each seller: Seller dashboard → Earnings → "Bank Transfer Account" → save bank + account number + name.
+  (A shop without it cannot be paid by transfer; buyers get a clear message.)
+- Buyer: Checkout → "Bank Transfer to the Shop".
+
+## Things to know
+- Direct transfers have NO Aurora markup and NO commission, and Aurora does not hold the money (no escrow/refund protection).
+- The receipt scan only HELPS; the seller must tick "I can see ₦X in my account" before confirming.
+- Unpaid transfer orders keep their stock reserved until cancelled (no auto-expiry yet).

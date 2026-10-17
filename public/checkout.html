@@ -80,9 +80,9 @@
         <h3>Order Summary</h3>
         <div id="summary-items"></div>
         <div class="summary-total"><span class="summary-total-label">Total</span><span class="summary-total-val" id="summary-total">₦0</span></div>
-        <div style="margin-top:14px;padding:12px;border-radius:10px;background:rgba(0,255,179,.05);border:1px solid rgba(0,255,179,.15)">
+        <div id="protect-box" style="margin-top:14px;padding:12px;border-radius:10px;background:rgba(0,255,179,.05);border:1px solid rgba(0,255,179,.15)">
           <div style="font-size:11px;color:var(--aurora-green);font-family:'Orbitron',sans-serif;letter-spacing:1px;margin-bottom:6px">BUYER PROTECTION</div>
-          <div style="font-size:12px;color:var(--text-muted);line-height:1.6">All purchases on Aurora are protected. Get a full refund if your item doesn't arrive.</div>
+          <div id="protect-text" style="font-size:12px;color:var(--text-muted);line-height:1.6">All purchases on Aurora are protected. Get a full refund if your item doesn't arrive.</div>
         </div>
       </div>
     </div>
@@ -99,9 +99,9 @@
             <div><div class="payment-method-label">Credit / Debit Card</div><div class="payment-method-sub">Visa, Mastercard, Verve</div></div>
             <div class="payment-radio"></div>
           </div>
-          <div class="payment-method" onclick="selectPayment(this,'transfer')">
+          <div class="payment-method" onclick="selectPayment(this,'manual')">
             <span class="payment-method-icon">🏦</span>
-            <div><div class="payment-method-label">Bank Transfer</div><div class="payment-method-sub">Instant bank transfer</div></div>
+            <div><div class="payment-method-label">Bank Transfer to the Shop</div><div class="payment-method-sub">Pay the shop's account, then upload your receipt</div></div>
             <div class="payment-radio"></div>
           </div>
           <div class="payment-method" onclick="selectPayment(this,'pod')">
@@ -109,6 +109,10 @@
             <div><div class="payment-method-label">Pay on Delivery</div><div class="payment-method-sub">Cash or POS at your door</div></div>
             <div class="payment-radio"></div>
           </div>
+        </div>
+        <div id="manual-info" class="glass-card" style="display:none;padding:16px;gap:12px;align-items:flex-start">
+          <span style="font-size:20px">🧾</span>
+          <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6">After you tap "Place Order" you'll see the shop's account number, the exact amount and a short reference code to put in your transfer remark. Then upload your receipt — the shop confirms it, and Aurora issues your receipt and tracking ID.</p>
         </div>
         <div id="card-form" style="display:flex;flex-direction:column;gap:10px">
           <div class="glass-card" style="padding:16px;display:flex;gap:12px;align-items:flex-start">
@@ -217,10 +221,17 @@ function selectDelivery(el,type){
 function selectPayment(el,type){
   document.querySelectorAll('#checkout-payment .payment-method').forEach(m=>m.classList.remove('selected'));
   el.classList.add('selected'); selectedPayment=type;
-  document.getElementById('card-form').style.display = type==='pod' ? 'none' : 'flex';
+  document.getElementById('card-form').style.display = (type==='pod' || type==='manual') ? 'none' : 'flex';
+  document.getElementById('manual-info').style.display = type==='manual' ? 'flex' : 'none';
   document.getElementById('payment-disclaimer').textContent = type==='pod'
     ? 'Pay the delivery agent by cash or POS when your order arrives.'
-    : 'Your payment is held securely until the order is marked delivered, then released to the seller — full refund if it doesn\'t arrive.';
+    : type==='manual'
+      ? 'You pay the shop directly. Aurora does not hold this money, so only transfer to shops you trust.'
+      : 'Your payment is held securely until the order is marked delivered, then released to the seller — full refund if it doesn\'t arrive.';
+  const pt = document.getElementById('protect-text');
+  if (pt) pt.textContent = type==='manual'
+    ? 'Direct bank transfers go straight to the shop, so Aurora\'s refund protection does not apply to them. Your Aurora receipt and tracking ID still record the order.'
+    : 'All purchases on Aurora are protected. Get a full refund if your item doesn\'t arrive.';
 }
 
 let currentUser = null;
@@ -241,6 +252,13 @@ async function placeOrder(){
   };
 
   try {
+    if (selectedPayment === 'manual') {
+      // Pay the shop's own account: create the order(s), then go to the page that shows where to send the money.
+      const { orders } = await AuroraAPI.post('/transfers/checkout', payload);
+      AuroraCart.clear();
+      window.location.href = 'transfer.html?o=' + orders.map(o => o.id).join(',');
+      return;
+    }
     if (selectedPayment === 'pod') {
       const { orders } = await AuroraAPI.post('/orders', payload);
       finishOrder(orders);
