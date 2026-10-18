@@ -8,10 +8,6 @@ const paystack = require('../paystack');
 
 const router = express.Router();
 
-// Paystack is switched OFF for now (buyers pay by bank transfer — see routes/transfers.js).
-// Set PAYSTACK_ENABLED=true in Vercel to bring card payments and payouts back without touching code.
-const paystackOn = (req, res, next) => (process.env.PAYSTACK_ENABLED === 'true' ? next() : res.status(503).json({ error: 'Card payments are switched off right now. Please pay by bank transfer.' }));
-
 const COMMISSION_PERCENT = 5; // Aurora's cut. One number — change here to adjust platform-wide.
 
 function reference(prefix) {
@@ -29,7 +25,7 @@ router.get('/banks', async (req, res) => {
 });
 
 // ---------- Seller payout account setup ----------
-router.post('/payout-account', paystackOn, requireAuth, async (req, res) => {
+router.post('/payout-account', requireAuth, async (req, res) => {
   const { data: shop } = await supabaseAdmin.from('shops').select('*').eq('owner_id', req.user.id).maybeSingle();
   if (!shop) return res.status(404).json({ error: "You don't have a shop yet." });
 
@@ -78,7 +74,7 @@ router.get('/payout-account', requireAuth, async (req, res) => {
 });
 
 // ---------- Checkout (card / bank transfer) ----------
-router.post('/checkout', paystackOn, requireAuth, async (req, res) => {
+router.post('/checkout', requireAuth, async (req, res) => {
   let orders;
   try {
     orders = await createOrdersFromCart(req.user.id, req.user.phone, req.body);

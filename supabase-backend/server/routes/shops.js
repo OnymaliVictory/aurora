@@ -23,7 +23,6 @@ function shopOut(row, productCount = 0, orderCount = 0, opts = {}) {
     category: row.category,
     description: row.description,
     color: row.color,
-    theme: row.theme || 'classic',
     city: row.city,
     area: row.area,
     address: row.address,

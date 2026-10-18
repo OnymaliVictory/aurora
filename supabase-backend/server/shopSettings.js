@@ -5,8 +5,6 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const geo = require('./geo');
 const HEX = /^#[0-9a-fA-F]{6}$/;
-// Shop templates. The look itself lives in public/js/shop-themes.js; the server only decides WHICH names are allowed.
-const THEMES = ['classic', 'christmas', 'halloween', 'valentine', 'newyear', 'eid', 'blackfriday', 'naija', 'spring'];
 const PHONE = /^[0-9+()\-\s]{5,30}$/;
 
 // ---------- social links ----------
@@ -96,7 +94,6 @@ function cleanShopPatch(body) {
     if ((e = text(...args))) return e;
   }
   if ('phone' in b) { if (typeof b.phone !== 'string' || (b.phone.trim() && !PHONE.test(b.phone.trim()))) return bad('That phone number does not look right.'); patch.phone = b.phone.trim(); }
-  if ('theme' in b) { if (typeof b.theme !== 'string' || !THEMES.includes(b.theme)) return bad('Choose one of the available shop templates.'); patch.theme = b.theme; }
   if ('color' in b) { if (typeof b.color !== 'string' || !HEX.test(b.color)) return bad('Colour must look like #00ffb3.'); patch.color = b.color.toLowerCase(); }
   if ('openDays' in b) { if (!Array.isArray(b.openDays) || b.openDays.some(d => !DAYS.includes(d))) return bad('Choose valid opening days.'); patch.open_days = [...new Set(b.openDays)]; }
   for (const k of ['openTime', 'closeTime']) if (k in b) { if (typeof b[k] !== 'string' || !TIME.test(b[k])) return bad('Times must look like 09:00.'); patch[k === 'openTime' ? 'open_time' : 'close_time'] = b[k]; }
@@ -134,4 +131,4 @@ function cleanProfilePatch(body) {
   return { patch };
 }
 
-module.exports = { THEMES, cleanShopPatch, cleanProfilePatch, cleanSocials, normalizeSocial, PLATFORMS };
+module.exports = { cleanShopPatch, cleanProfilePatch, cleanSocials, normalizeSocial, PLATFORMS };
