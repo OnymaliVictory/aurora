@@ -1,0 +1,50 @@
+/* Shop templates + owner colours on the shop page. Colours arrive as --shop-* variables from js/shop-themes.js.
+   Festive templates apply in light AND dark mode. The owner's own colour (Classic) is applied in light mode here;
+   in dark mode Classic keeps the original Aurora look, as before. */
+
+/* ---- map the shop's colours onto the site's own variables, but only inside the shop page, its pop-ups and cart ---- */
+body[data-shop-theme]:not([data-shop-theme="classic"]) :is(#shop-content, .modal-overlay, .cart-drawer, .cart-overlay, #toast),
+html[data-theme="light"] body[data-shop-theme="classic"] :is(#shop-content, .modal-overlay, .cart-drawer, .cart-overlay, #toast) {
+  --aurora-green: var(--shop-accent);
+  --aurora-teal: var(--shop-accent2);
+  --aurora-purple: var(--shop-accent);
+  --aurora-blue: var(--shop-accent2);
+  --grad: linear-gradient(135deg, var(--shop-accent), var(--shop-accent2));
+  --on-accent-text: var(--shop-on-accent);
+  --glow-green: 0 8px 24px color-mix(in srgb, var(--shop-accent) 32%, transparent);
+  --glow-teal: 0 8px 24px color-mix(in srgb, var(--shop-accent2) 28%, transparent);
+}
+/* buttons read the accent in both modes (dark mode used a fixed dark text colour) */
+body[data-shop-theme]:not([data-shop-theme="classic"]) :is(.btn-primary, .btn-full, .modal-actions .btn-primary),
+html[data-theme="light"] body[data-shop-theme="classic"] :is(.btn-primary, .btn-full, .modal-actions .btn-primary) {
+  background: var(--grad) !important; color: var(--shop-on-accent) !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--shop-accent) 30%, transparent) !important;
+}
+body[data-shop-theme]:not([data-shop-theme="classic"]) .btn-cart { color: var(--shop-accent) !important; border-color: color-mix(in srgb, var(--shop-accent) 45%, transparent) !important; background: color-mix(in srgb, var(--shop-accent) 9%, transparent) !important; }
+
+/* ---- cover text ---- */
+body[data-shop-theme] .shop-name-big { text-shadow: 0 2px 12px rgba(0,0,0,.45); }
+body[data-shop-theme]:not([data-shop-theme="classic"]) .shop-name-big { font-family: var(--shop-font) !important; font-size: clamp(26px, 5vw, 40px); letter-spacing: 0 !important; color: #fff !important; }
+body[data-shop-theme]:not([data-shop-theme="classic"]) .shop-cat-tag { background: rgba(255,255,255,.22) !important; color: #fff !important; text-shadow: none; }
+body[data-shop-theme]:not([data-shop-theme="classic"]) .shop-logo-big { border-color: #fff !important; box-shadow: 0 8px 26px rgba(0,0,0,.35) !important; }
+/* the festive art sits on top of the cover's background but under the logo and name */
+body[data-shop-theme]:not([data-shop-theme="classic"]) .shop-cover { min-height: 255px; }
+body[data-shop-theme] #shop-tagline { color: rgba(255,255,255,.92) !important; text-shadow: 0 1px 6px rgba(0,0,0,.45); }
+
+/* ---- page tint: a soft wash of the template's colours behind the shop ---- */
+body[data-shop-theme]:not([data-shop-theme="classic"])::after {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(640px 420px at 100% 100%, color-mix(in srgb, var(--shop-accent2) 13%, transparent), transparent 70%),
+    radial-gradient(640px 420px at 0% 40%, color-mix(in srgb, var(--shop-accent) 10%, transparent), transparent 70%);
+}
+body[data-shop-theme]:not([data-shop-theme="classic"]) .shop-tab.active { color: var(--shop-accent) !important; border-color: var(--shop-accent) !important; }
+body[data-shop-theme]:not([data-shop-theme="classic"]) .shop-tabs { border-bottom-color: color-mix(in srgb, var(--shop-accent) 35%, transparent) !important; }
+body[data-shop-theme]:not([data-shop-theme="classic"]) .listing-card:hover { border-color: color-mix(in srgb, var(--shop-accent) 55%, transparent) !important; }
+
+/* ---- falling / rising emoji ---- */
+.shop-fx { position: fixed; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.shop-fx span { position: absolute; left: var(--x); top: 0; font-size: var(--s); opacity: .85; will-change: transform; animation-duration: var(--d); animation-delay: var(--delay); animation-iteration-count: infinite; animation-timing-function: linear; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+@keyframes shopfall { 0% { transform: translate3d(0, -8vh, 0) rotate(0deg); } 100% { transform: translate3d(var(--drift), 108vh, 0) rotate(300deg); } }
+@keyframes shoprise { 0% { transform: translate3d(0, 106vh, 0) rotate(-12deg); opacity: 0; } 12% { opacity: .85; } 100% { transform: translate3d(var(--drift), -10vh, 0) rotate(14deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .shop-fx { display: none; } }

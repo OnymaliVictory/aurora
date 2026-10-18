@@ -27,8 +27,13 @@
   .st-prev-banner{height:130px;background:var(--deep) center/cover no-repeat;position:relative}
   .st-prev-body{display:flex;gap:14px;align-items:center;padding:0 16px 16px;margin-top:-30px;position:relative}
   .st-prev-logo{width:64px;height:64px;border-radius:14px;border:3px solid var(--deep);display:flex;align-items:center;justify-content:center;font-size:28px;background:var(--accent,#00ffb3) center/cover no-repeat;flex-shrink:0;overflow:hidden}
-  .st-prev-name{font-weight:700;font-size:17px}.st-prev-tag{font-size:12.5px;color:var(--text-muted)}
+  .st-prev-name{font-weight:700;font-size:17px;font-family:var(--prevfont,inherit)}.st-prev-tag{font-size:12.5px;color:var(--text-muted)}
   .st-prev-pill{display:inline-block;margin-top:5px;padding:3px 10px;border-radius:50px;font-size:10.5px;border:1px solid var(--accent,#00ffb3);color:var(--accent,#00ffb3)}
+  .st-tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .st-tpl{text-align:left;padding:0;border-radius:14px;border:2px solid var(--glass-border);background:var(--glass);color:var(--text-primary);cursor:pointer;overflow:hidden;font-family:inherit}
+  .st-tpl.on{border-color:var(--text-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--text-primary) 14%,transparent)}
+  .st-tpl-cover{height:64px;background-color:var(--deep)}
+  .st-tpl-name{font-weight:700;font-size:13px;padding:8px 10px 0}.st-tpl-desc{font-size:11px;color:var(--text-muted);padding:2px 10px 10px;line-height:1.35}
   .st-colors{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .st-sw{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
   .st-sw.on{border-color:var(--text-primary)}
@@ -98,7 +103,11 @@
         </div>
         <div class="st-hint" style="margin-top:6px">Banner works best around 1200×400, logo square. Photos are resized for you.</div>
         <div class="st-grid" style="margin-top:16px">
-          <div class="form-group full"><label class="form-label">Accent colour</label>
+          <div class="form-group full"><label class="form-label">Shop template</label>
+            <div class="st-tpls" id="templates"></div>
+            <div class="st-hint" style="margin-top:6px">Templates change the whole look of your shop page — cover art, colours, fonts and a little festive animation. Switch any time; seasonal ones are great for Christmas, Eid, Halloween and more.</div>
+          </div>
+          <div class="form-group full" id="color-group"><label class="form-label">Accent colour <span id="color-note" class="st-hint"></span></label>
             <div class="st-colors" id="colors"></div>
           </div>
           <div class="form-group"><label class="form-label">Shop emoji (used when there's no logo)</label><input class="form-input" id="s-emoji" maxlength="8"></div>
@@ -168,12 +177,13 @@
 <script src="js/app.js"></script>
 <script src="js/nearby.js"></script>
 <script src="js/aurora-bg.js"></script>
+<script src="js/shop-themes.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const COLORS = ['#00ffb3','#00d4ff','#7c5cff','#ff4fa3','#ffb020','#ff5c5c','#4ade80','#f472b6'];
 const SOCIALS = [['instagram','Instagram','@yourshop'],['whatsapp','WhatsApp','080… or +234…'],['tiktok','TikTok','@yourshop'],['facebook','Facebook','page name or link'],['x','X (Twitter)','@yourshop'],['youtube','YouTube','@channel or link'],['website','Website','yourshop.com']];
-let user = null, SHOP = null, color = '#00ffb3', busy = false;
+let user = null, SHOP = null, color = '#00ffb3', theme = 'classic', busy = false;
 
 function showTab(t) {
   document.querySelectorAll('.st-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
@@ -219,20 +229,33 @@ function changePassword() {
 
 // ---------- shop: preview ----------
 function paintPreview() {
-  const accent = color;
+  const pal = ShopThemes.palette({ theme, color });
+  const accent = pal.accent;
   $('prev').style.setProperty('--accent', accent);
+  $('prev').style.setProperty('--prevfont', ShopThemes.T[theme].font ? `'${ShopThemes.T[theme].font[0]}', 'Inter', sans-serif` : 'inherit');
+  ShopThemes.loadFont(theme);
   $('prev-name').textContent = $('s-name').value || 'Your shop';
   $('prev-tag').textContent = $('s-tagline').value;
   $('prev-cat').textContent = $('s-cat').value || 'Category';
-  const b = $('prev-banner'); b.style.backgroundImage = SHOP.bannerUrl ? `url("${SHOP.bannerUrl}")` : `linear-gradient(135deg, ${accent}55, #02050f)`;
+  ShopThemes.paintCover($('prev-banner'), { theme, color }, SHOP.bannerUrl, { always: true });
   const l = $('prev-logo');
   if (SHOP.logoUrl) { l.style.backgroundImage = `url("${SHOP.logoUrl}")`; l.textContent = ''; }
   else { l.style.backgroundImage = 'none'; l.style.background = accent; l.textContent = $('s-emoji').value || '🏪'; }
   $('rm-banner').style.display = SHOP.bannerUrl ? '' : 'none'; $('rm-logo').style.display = SHOP.logoUrl ? '' : 'none';
-  document.querySelectorAll('.st-sw').forEach(s => s.classList.toggle('on', s.dataset.c === accent));
-  $('c-pick').value = accent;
+  document.querySelectorAll('.st-sw').forEach(s => s.classList.toggle('on', s.dataset.c === color));
+  $('c-pick').value = color;
+  document.querySelectorAll('.st-tpl').forEach(t => t.classList.toggle('on', t.dataset.t === theme));
+  $('color-group').style.opacity = theme === 'classic' ? 1 : .45;
+  $('color-note').textContent = theme === 'classic' ? '' : '— festive templates use their own colours; this applies to Classic';
 }
-function setColor(c) { color = c.toLowerCase(); paintPreview(); }
+function setColor(c) { color = c.toLowerCase(); paintPreview(); renderTemplates(); }
+function setTheme(k) { theme = ShopThemes.keyOf(k); paintPreview(); }
+function renderTemplates() {
+  $('templates').innerHTML = ShopThemes.KEYS.map(k => { const t = ShopThemes.T[k];
+    return `<button type="button" class="st-tpl${k === theme ? ' on' : ''}" data-t="${k}" onclick="setTheme('${k}')"><div class="st-tpl-cover" data-cover="${k}"></div><div class="st-tpl-name">${t.emoji} ${t.name}</div><div class="st-tpl-desc">${t.desc}</div></button>`; }).join('');
+  document.querySelectorAll('[data-cover]').forEach(el => ShopThemes.paintCover(el, { theme: el.dataset.cover, color }, null, { always: true }));
+}
+new MutationObserver(() => { if (SHOP) { renderTemplates(); paintPreview(); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
 function buildStatic() {
   $('colors').innerHTML = COLORS.map(c => `<button type="button" class="st-sw" data-c="${c}" style="background:${c}" aria-label="${c}" onclick="setColor('${c}')"></button>`).join('')
@@ -241,6 +264,7 @@ function buildStatic() {
   $('socials').innerHTML = SOCIALS.map(([k, label, ph]) => `<div class="st-social"><span>${label}</span><input class="form-input" data-social="${k}" maxlength="200" placeholder="${ph}"></div>`).join('');
   ['s-name', 's-tagline', 's-emoji'].forEach(i => $(i).addEventListener('input', paintPreview));
   $('s-cat').addEventListener('change', paintPreview);
+  renderTemplates();
 }
 
 function geoStatus(){ const has = geoLat !== null && geoLng !== null; $('s-geo-status').textContent = has ? '✓ Position saved' : 'Not set yet — buyers can only find you by city.'; $('s-geo-clear').style.display = has ? '' : 'none'; }
@@ -256,6 +280,7 @@ function fillShop() {
   $('s-home').checked = !!s.deliveryHome; $('s-pickup').checked = !!s.deliveryPickup; $('s-pod').checked = !!s.payOnDelivery;
   document.querySelectorAll('[data-social]').forEach(i => (i.value = (s.socials || {})[i.dataset.social] || ''));
   color = /^#[0-9a-f]{6}$/i.test(s.color || '') ? s.color.toLowerCase() : '#00ffb3';
+  theme = ShopThemes.keyOf(s.theme); renderTemplates();
   $('s-view').href = 'shop.html?slug=' + encodeURIComponent(s.slug);
   paintPreview();
 }
@@ -284,7 +309,7 @@ function saveShop() {
       openDays: [...document.querySelectorAll('[data-day]:checked')].map(c => c.dataset.day),
       openTime: $('s-open').value, closeTime: $('s-close').value,
       deliveryHome: $('s-home').checked, deliveryPickup: $('s-pickup').checked, payOnDelivery: $('s-pod').checked,
-      color, socials, lat: geoLat, lng: geoLng,
+      color, theme, socials, lat: geoLat, lng: geoLng,
     };
     const { shop } = await AuroraAPI.patch('/shops/' + SHOP.id, body);
     SHOP = shop; fillShop(); showToast('✓ Shop saved');
