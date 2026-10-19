@@ -4,7 +4,6 @@ const { requireAuth } = require('../auth');
 const { upload, uploadToSupabase, deleteFromSupabase } = require('../uploads');
 const { cleanShopPatch } = require('../shopSettings');
 const { safeSearch, safeSlug, str } = require('../security');
-const geo = require('../geo');
 
 const router = express.Router();
 
@@ -13,7 +12,7 @@ function slugify(name) { return safeSlug(name); }
 // DB rows are snake_case; the frontend expects the same camelCase shape the
 // old JSON-file version used, so we translate at the boundary and leave the
 // rest of the frontend untouched.
-function shopOut(row, productCount = 0, orderCount = 0, opts = {}) {
+function shopOut(row, productCount = 0, orderCount = 0) {
   if (!row) return null;
   return {
     id: row.id,
@@ -23,6 +22,7 @@ function shopOut(row, productCount = 0, orderCount = 0, opts = {}) {
     category: row.category,
     description: row.description,
     color: row.color,
+    theme: row.theme || 'classic',
     city: row.city,
     area: row.area,
     address: row.address,
@@ -38,9 +38,6 @@ function shopOut(row, productCount = 0, orderCount = 0, opts = {}) {
     socials: row.socials || {},
     logoUrl: row.logo_url || null,
     bannerUrl: row.banner_url || null,
-    hasLocation: row.lat != null && row.lng != null,
-    ...(opts.coords ? { lat: row.lat ?? null, lng: row.lng ?? null } : {}),
-    ...(opts.distanceKm !== undefined ? { distanceKm: opts.distanceKm } : {}),
     rating: row.rating,
     reviewCount: row.review_count,
     created_at: row.created_at,
@@ -49,12 +46,12 @@ function shopOut(row, productCount = 0, orderCount = 0, opts = {}) {
   };
 }
 
-async function withComputed(row, opts = {}) {
+async function withComputed(row) {
   const [{ count: productCount }, { count: orderCount }] = await Promise.all([
     supabaseAdmin.from('products').select('id', { count: 'exact', head: true }).eq('shop_id', row.id),
     supabaseAdmin.from('orders').select('id', { count: 'exact', head: true }).eq('shop_id', row.id),
   ]);
-  return shopOut(row, productCount || 0, orderCount || 0, opts);
+  return shopOut(row, productCount || 0, orderCount || 0);
 }
 
 router.get('/', async (req, res) => {
@@ -66,28 +63,7 @@ router.get('/', async (req, res) => {
   if (q) query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%`);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
-
-  // "Near me": only when the app sends a valid position. Without it (e.g. product search,
-  // browse-all) every shop is returned. Shops that have not saved a position yet are still
-  // included when their city matches the buyer's city, so existing shops don't disappear.
-  const la = geo.lat(req.query.lat), lo = geo.lng(req.query.lng);
-  if (la !== null && lo !== null) {
-    const radius = geo.radiusKm(req.query.radius);
-    const city = safeSearch(req.query.city).toLowerCase();
-    const near = [];
-    for (const row of data) {
-      if (row.lat != null && row.lng != null) {
-        const d = geo.haversineKm(la, lo, Number(row.lat), Number(row.lng));
-        if (d <= radius) near.push({ row, d: Math.round(d * 10) / 10 });
-      } else if (city && String(row.city || '').trim().toLowerCase() === city) {
-        near.push({ row, d: null });
-      }
-    }
-    near.sort((a, b) => (a.d === null) - (b.d === null) || (a.d ?? 0) - (b.d ?? 0));
-    const shops = await Promise.all(near.map(n => withComputed(n.row, { distanceKm: n.d })));
-    return res.json({ shops, nearby: true, radiusKm: radius });
-  }
-  const shops = await Promise.all(data.map(row => withComputed(row)));
+  const shops = await Promise.all(data.map(withComputed));
   res.json({ shops });
 });
 
@@ -95,7 +71,7 @@ router.get('/mine', requireAuth, async (req, res) => {
   const { data, error } = await supabaseAdmin.from('shops').select('*').eq('owner_id', req.user.id).maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
   if (!data) return res.json({ shop: null });
-  res.json({ shop: await withComputed(data, { coords: true }) });
+  res.json({ shop: await withComputed(data) });
 });
 
 router.get('/:idOrSlug', async (req, res) => {
@@ -149,8 +125,6 @@ router.post('/', requireAuth, async (req, res) => {
     delivery_home: !!deliveryHome,
     delivery_pickup: !!deliveryPickup,
     pay_on_delivery: !!payOnDelivery,
-    lat: geo.lat(b.lat) !== null && geo.lng(b.lng) !== null ? geo.lat(b.lat) : null,
-    lng: geo.lat(b.lat) !== null && geo.lng(b.lng) !== null ? geo.lng(b.lng) : null,
   }).select().single();
 
   if (error) return res.status(500).json({ error: error.message });
@@ -179,7 +153,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
 
   const { data: updated, error } = await supabaseAdmin.from('shops').update(patch).eq('id', shop.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ shop: await withComputed(updated, { coords: true }) });
+  res.json({ shop: await withComputed(updated) });
 });
 
 // Logo and banner: POST /shops/:id/logo | /banner (multipart "image"), DELETE to remove.

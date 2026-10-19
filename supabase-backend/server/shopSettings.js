@@ -3,8 +3,9 @@
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
-const geo = require('./geo');
 const HEX = /^#[0-9a-fA-F]{6}$/;
+// Shop templates. The look itself lives in public/js/shop-themes.js; the server only decides WHICH names are allowed.
+const THEMES = ['classic', 'christmas', 'halloween', 'valentine', 'newyear', 'eid', 'blackfriday', 'naija', 'spring'];
 const PHONE = /^[0-9+()\-\s]{5,30}$/;
 
 // ---------- social links ----------
@@ -94,21 +95,12 @@ function cleanShopPatch(body) {
     if ((e = text(...args))) return e;
   }
   if ('phone' in b) { if (typeof b.phone !== 'string' || (b.phone.trim() && !PHONE.test(b.phone.trim()))) return bad('That phone number does not look right.'); patch.phone = b.phone.trim(); }
+  if ('theme' in b) { if (typeof b.theme !== 'string' || !THEMES.includes(b.theme)) return bad('Choose one of the available shop templates.'); patch.theme = b.theme; }
   if ('color' in b) { if (typeof b.color !== 'string' || !HEX.test(b.color)) return bad('Colour must look like #00ffb3.'); patch.color = b.color.toLowerCase(); }
   if ('openDays' in b) { if (!Array.isArray(b.openDays) || b.openDays.some(d => !DAYS.includes(d))) return bad('Choose valid opening days.'); patch.open_days = [...new Set(b.openDays)]; }
   for (const k of ['openTime', 'closeTime']) if (k in b) { if (typeof b[k] !== 'string' || !TIME.test(b[k])) return bad('Times must look like 09:00.'); patch[k === 'openTime' ? 'open_time' : 'close_time'] = b[k]; }
   for (const [k, col] of [['deliveryHome', 'delivery_home'], ['deliveryPickup', 'delivery_pickup'], ['payOnDelivery', 'pay_on_delivery']]) {
     if (k in b) { if (typeof b[k] !== 'boolean') return bad(`${k} must be true or false.`); patch[col] = b[k]; }
-  }
-  // Shop position (for "shops near me"). Both numbers together, or both null/'' to clear it.
-  if ('lat' in b || 'lng' in b) {
-    const clearing = (b.lat === null || b.lat === '') && (b.lng === null || b.lng === '');
-    if (clearing) { patch.lat = null; patch.lng = null; }
-    else {
-      const la = geo.lat(b.lat), lo = geo.lng(b.lng);
-      if (la === null || lo === null) return bad('That location does not look right.');
-      patch.lat = Math.round(la * 1e6) / 1e6; patch.lng = Math.round(lo * 1e6) / 1e6;
-    }
   }
   if ('socials' in b) { const s = cleanSocials(b.socials); if (s.error) return s; patch.socials = s.value; }
   return { patch };
@@ -131,4 +123,4 @@ function cleanProfilePatch(body) {
   return { patch };
 }
 
-module.exports = { cleanShopPatch, cleanProfilePatch, cleanSocials, normalizeSocial, PLATFORMS };
+module.exports = { THEMES, cleanShopPatch, cleanProfilePatch, cleanSocials, normalizeSocial, PLATFORMS };
