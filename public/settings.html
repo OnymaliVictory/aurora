@@ -143,6 +143,8 @@
         </div>
       </div>
 
+      <div class="glass-card st-card" id="transfer-account-card"></div>
+
       <div class="glass-card st-card">
         <h3>Social links</h3><div class="sub">Add an @handle or the full link. Leave blank to hide one. Buyers see these on your shop page.</div>
         <div id="socials" style="display:flex;flex-direction:column;gap:10px"></div>
@@ -178,6 +180,7 @@
 <script src="js/nearby.js"></script>
 <script src="js/aurora-bg.js"></script>
 <script src="js/shop-themes.js"></script>
+<script src="js/seller-transfers.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -363,7 +366,7 @@ async function init() {
     $('nav-seller').style.display = '';
     try {
       const { shop } = await AuroraAPI.get('/shops/mine');
-      if (shop) { SHOP = shop; $('tab-shop').style.display = ''; fillShop(); }
+      if (shop) { SHOP = shop; $('tab-shop').style.display = ''; fillShop(); if (typeof SellerTransfers !== 'undefined') SellerTransfers.mountAccount(); }
       else { $('tab-shop').style.display = ''; $('pane-shop').innerHTML = '<div class="glass-card st-card"><h3>You have no shop yet</h3><div class="sub">Create one to start selling.</div><a class="btn-primary" href="create-shop.html">Create my shop</a></div>'; }
     } catch (err) { showToast(err.message, 'error'); }
   }
