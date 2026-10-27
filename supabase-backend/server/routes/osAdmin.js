@@ -80,7 +80,7 @@ router.get('/orders/:id', async (req, res) => {
 
 router.post('/orders/:id/confirm', async (req, res) => {
   const id = idOf(req.params.id); if (!id) return bad(res, 404, 'Order not found.');
-  if (!lic.ready()) return bad(res, 503, 'The licence signing key is not set up on the server yet (OS_LICENSE_PRIVATE_KEY in Vercel).');
+  if (!lic.ready()) return bad(res, 409, 'The licence signing key is not set up on the server yet (OS_LICENSE_PRIVATE_KEY in Vercel).');
   const { data: o } = await supabaseAdmin.from('os_orders').select('*').eq('id', id).maybeSingle();
   if (!o) return bad(res, 404, 'Order not found.');
   if (o.status === 'confirmed') return bad(res, 409, 'Already confirmed.');
@@ -143,7 +143,7 @@ router.post('/licenses/:userId/extend', async (req, res) => {
   const l = await findLicense(req, res); if (!l) return;
   const days = Number(req.body && req.body.days);
   if (!Number.isInteger(days) || days < 1 || days > 366) return bad(res, 400, 'Days must be between 1 and 366.');
-  if (!lic.ready()) return bad(res, 503, 'Licence signing key is not set up.');
+  if (!lic.ready()) return bad(res, 409, 'Licence signing key is not set up.');
   const base = new Date(l.expires_at) > new Date() ? new Date(l.expires_at) : new Date();
   const end = new Date(base.getTime() + days * 86400000);
   const token = lic.issue({ userId: l.user_id, business: l.business_name, plan: l.plan, expiresAt: end, startedAt: l.started_at });
@@ -154,7 +154,7 @@ router.post('/licenses/:userId/extend', async (req, res) => {
 
 // Give someone a licence without payment (your own shop, a test customer, a partner).
 router.post('/grant', async (req, res) => {
-  if (!lic.ready()) return bad(res, 503, 'Licence signing key is not set up.');
+  if (!lic.ready()) return bad(res, 409, 'Licence signing key is not set up.');
   const email = str(req.body && req.body.email, 120).toLowerCase();
   const plan = req.body && req.body.plan;
   const months = Number(req.body && req.body.months);

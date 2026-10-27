@@ -48,6 +48,7 @@ router.get('/me', requireAuth, async (req, res) => {
   res.json({
     role: req.user.role, plans: publicSettings(settings), license,
     canDownload: !!(license && license.state !== 'revoked' && settings.download_url),
+    listed: lic ? lic.listed !== false : true,
     orders: (orders || []).map(o => orderOut(o, settings)),
   });
 });
@@ -55,8 +56,8 @@ router.get('/me', requireAuth, async (req, res) => {
 // ---- start a purchase / renewal ----
 router.post('/orders', requireAuth, sellerOnly, rateLimit({ windowMs: 10 * 60_000, max: 15, key: r => 'osord:' + r.user.id }), async (req, res) => {
   const settings = await core.getSettings();
-  if (!settings.enabled) return bad(res, 503, 'Aurora OS sales are paused for now. Please check back soon.');
-  if (!settings.account_number) return bad(res, 503, 'Payments are not set up yet. Please try again later.');
+  if (!settings.enabled) return bad(res, 409, 'Aurora OS sales are paused for now. Please check back soon.');
+  if (!settings.account_number) return bad(res, 409, 'Payments are not open yet — Aurora is still setting up its bank account. Please try again soon.');
   const plan = req.body && req.body.plan;
   if (!['monthly', 'yearly'].includes(plan)) return bad(res, 400, 'Choose monthly or yearly.');
   const business = str(req.body.businessName, 80);
@@ -117,6 +118,29 @@ router.get('/download', requireAuth, async (req, res) => {
   if (!lic || lic.status === 'revoked') return bad(res, 403, 'Subscribe to download Aurora OS.');
   if (!settings.download_url) return bad(res, 404, 'The download is not ready yet. We will email you when it is.');
   res.json({ url: settings.download_url, version: settings.app_version });
+});
+
+// ---- public directory: supermarkets that run Aurora OS (their shop details are already public on their shop page) ----
+router.get('/directory', rateLimit({ windowMs: 60_000, max: 60 }), async (req, res) => {
+  const { data: lics } = await supabaseAdmin.from('os_licenses').select('user_id, expires_at, status, listed').eq('status', 'active').neq('listed', false).gte('expires_at', new Date().toISOString());
+  const ids = (lics || []).map(l => l.user_id);
+  if (!ids.length) return res.json({ shops: [] });
+  const { data: shops } = await supabaseAdmin.from('shops').select('*').in('owner_id', ids).order('name');
+  res.json({ shops: (shops || []).map(r => ({
+    name: r.name, slug: r.slug, emoji: r.emoji || '🛒', color: /^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : null, logoUrl: r.logo_url || null,
+    tagline: r.tagline || '', city: r.city || '', area: r.area || '', address: r.address || '', phone: r.phone || '',
+    openDays: r.open_days || '', openTime: r.open_time || '', closeTime: r.close_time || '',
+    deliveryHome: !!r.delivery_home, deliveryPickup: !!r.delivery_pickup, payOnDelivery: !!r.pay_on_delivery,
+    rating: r.rating || 0, reviewCount: r.review_count || 0 })) });
+});
+
+// The subscriber chooses whether their supermarket appears in that directory.
+router.post('/listing', requireAuth, async (req, res) => {
+  const listed = !!(req.body && req.body.listed);
+  const { data, error } = await supabaseAdmin.from('os_licenses').update({ listed }).eq('user_id', req.user.id).select('user_id');
+  if (error) return bad(res, 500, error.message);
+  if (!data || !data.length) return bad(res, 404, 'You do not have a subscription yet.');
+  res.json({ ok: true, listed });
 });
 
 module.exports = router;

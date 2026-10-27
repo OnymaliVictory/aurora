@@ -62,3 +62,6 @@ alter table public.os_licenses enable row level security;
 -- Payment receipts reuse the private 'payment-proofs' bucket (already created by migration-transfer.sql).
 insert into storage.buckets (id, name, public) values ('payment-proofs', 'payment-proofs', false)
 on conflict (id) do update set public = false;
+
+-- Supermarket directory: subscriber can choose to be listed (safe to re-run)
+alter table public.os_licenses add column if not exists listed boolean not null default true;
