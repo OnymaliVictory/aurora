@@ -75,6 +75,7 @@
       <button class="adm-tab" data-tab="users" onclick="showTab('users')">Users</button>
       <button class="adm-tab" data-tab="support" onclick="showTab('support')" id="tab-support">Support</button>
       <button class="adm-tab" data-tab="pricing" onclick="showTab('pricing')">Pricing</button>
+      <button class="adm-tab" data-tab="supermarket" onclick="showTab('supermarket')" id="tab-supermarket">Supermarket OS</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -125,6 +126,40 @@
       <div class="adm-kpis" id="pr-earn" style="margin-top:16px"></div>
     </div>
 
+    <!-- SUPERMARKET OS -->
+    <div class="adm-pane" id="pane-supermarket">
+      <div class="adm-kpis" id="os-kpis"></div>
+      <div class="glass-card" style="padding:16px;margin-bottom:16px"><div class="adm-sub-h" style="margin-top:0">Money in (last 6 months)</div><div class="adm-bars" id="os-bars"></div></div>
+      <div class="adm-tabs" id="os-sub">
+        <button class="adm-chip active" data-s="pay" onclick="osSub('pay')" id="os-chip-pay">Payments</button>
+        <button class="adm-chip" data-s="lic" onclick="osSub('lic')">Subscribers</button>
+        <button class="adm-chip" data-s="set" onclick="osSub('set')">Settings</button>
+        <button class="adm-chip" data-s="grant" onclick="osSub('grant')">Give a licence</button>
+      </div>
+      <div id="os-pay"><div class="adm-bar-tools"><select class="adm-search" id="os-pay-f" style="flex:0 0 auto" onchange="loadOsPay()"><option value="proof_submitted">Waiting for me</option><option value="">All</option><option value="awaiting_proof">No receipt yet</option><option value="confirmed">Confirmed</option><option value="rejected">Rejected</option></select></div><div class="adm-table-wrap" id="os-pay-table"></div></div>
+      <div id="os-lic" style="display:none"><div class="adm-bar-tools"><select class="adm-search" id="os-lic-f" style="flex:0 0 auto" onchange="loadOsLic()"><option value="">Everyone</option><option value="active">Active</option><option value="expiring">Ending within 7 days</option><option value="expired">Expired (paused)</option><option value="revoked">Suspended</option></select></div><div class="adm-table-wrap" id="os-lic-table"></div></div>
+      <div id="os-set" style="display:none"><div class="glass-card" style="padding:18px;max-width:560px">
+        <p class="adm-info" id="os-sign" style="margin-top:0"></p>
+        <label class="form-label">Monthly price (₦)</label><input class="adm-search" id="os-s-monthly" type="number" min="0" style="width:180px;margin-bottom:10px">
+        <label class="form-label">Yearly price (₦)</label><input class="adm-search" id="os-s-yearly" type="number" min="0" style="width:180px;margin-bottom:10px">
+        <label class="form-label">Bank name</label><input class="adm-search" id="os-s-bank" style="width:100%;margin-bottom:10px">
+        <label class="form-label">Account number (10 digits)</label><input class="adm-search" id="os-s-num" inputmode="numeric" maxlength="10" style="width:100%;margin-bottom:10px">
+        <label class="form-label">Account name</label><input class="adm-search" id="os-s-name" style="width:100%;margin-bottom:10px">
+        <label class="form-label">Installer download link (https://…)</label><input class="adm-search" id="os-s-url" style="width:100%;margin-bottom:10px">
+        <label class="form-label">Latest app version</label><input class="adm-search" id="os-s-ver" style="width:140px;margin-bottom:10px">
+        <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:14px"><input type="checkbox" id="os-s-on"> Sales open</label>
+        <button class="adm-head-btn" style="margin-left:0" onclick="saveOsSettings()">Save settings</button> <span id="os-s-msg" class="adm-info" style="margin:0"></span>
+      </div></div>
+      <div id="os-grant" style="display:none"><div class="glass-card" style="padding:18px;max-width:480px">
+        <p class="adm-info" style="margin-top:0">Give a free licence (your own shop, a partner, a tester). The person must already have an Aurora account.</p>
+        <label class="form-label">Their account email</label><input class="adm-search" id="os-g-email" type="email" style="width:100%;margin-bottom:10px">
+        <label class="form-label">Business name</label><input class="adm-search" id="os-g-biz" style="width:100%;margin-bottom:10px">
+        <label class="form-label">Plan</label><select class="adm-search" id="os-g-plan" style="width:160px;margin-bottom:10px"><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
+        <label class="form-label">How many months (1–36)</label><input class="adm-search" id="os-g-months" type="number" min="1" max="36" value="1" style="width:100px;margin-bottom:14px">
+        <button class="adm-head-btn" style="margin-left:0" onclick="grantOs()">Give licence</button> <span id="os-g-msg" class="adm-info" style="margin:0"></span>
+      </div></div>
+    </div>
+
     <!-- SHOPS -->
     <div class="adm-pane" id="pane-shops"><div class="adm-table-wrap" id="shops-table"></div></div>
 
@@ -169,6 +204,7 @@
 </div>
 
 <!-- ORDER DETAIL -->
+<div class="adm-modal" id="os-modal" onclick="if(event.target===this)this.classList.remove('open')"><div class="glass-card adm-modal-box" id="os-modal-box"></div></div>
 <div class="adm-modal" id="order-modal" onclick="if(event.target===this)closeOrder()">
   <div class="glass-card adm-modal-box">
     <button class="adm-x" onclick="closeOrder()" aria-label="Close">×</button>
@@ -209,6 +245,94 @@ const statusBadge = o => {
 };
 const payBadge = o => `<span class="adm-badge ${o.paymentStatus === 'paid' ? 'good' : o.paymentStatus === 'refunded' || o.paymentStatus === 'failed' ? 'bad' : ''}">${e(o.paymentStatus)}</span>`;
 
+
+// ---------- Supermarket OS ----------
+const osNaira = n => fmtNaira(n);
+const osDay = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const osWho = u => `${e((u && u.name) || '—')}<div style="font-size:11px;color:var(--text-muted)">${e((u && u.email) || '')}${u && u.phone ? ' · ' + e(u.phone) : ''}</div>`;
+function osSub(s) {
+  document.querySelectorAll('#os-sub .adm-chip').forEach(b => b.classList.toggle('active', b.dataset.s === s));
+  ['pay', 'lic', 'set', 'grant'].forEach(x => $('os-' + x).style.display = x === s ? '' : 'none');
+  if (s === 'pay') loadOsPay(); if (s === 'lic') loadOsLic(); if (s === 'set') loadOsSettings();
+}
+async function loadOsStats() {
+  try {
+    const s = await AuroraAPI.get('/admin/os/stats'); const l = s.licenses;
+    const k = (n, t, cls) => `<div class="glass-card adm-kpi ${cls || ''}"><div class="n">${n}</div><div class="l">${t}</div></div>`;
+    $('os-kpis').innerHTML = k(l.active, `Active subscribers (${l.monthly} monthly · ${l.yearly} yearly)`) + k(l.expiring, 'Ending within 7 days', l.expiring ? 'warn' : '') + k(l.expired, 'Expired (paused)', l.expired ? 'warn' : '') +
+      k(s.pendingPayments, 'Payments to review', s.pendingPayments ? 'warn' : '') + k(osNaira(s.mrr), 'Monthly recurring (est.)') + k(osNaira(s.revenue6mo), 'Collected, last 6 months');
+    const max = Math.max(1, ...s.months.map(m => m.total));
+    $('os-bars').innerHTML = s.months.map(m => `<div class="adm-bar" title="${osNaira(m.total)}"><i style="height:${Math.max(2, Math.round(m.total / max * 80))}px"></i>${e(m.label)}</div>`).join('');
+    badge('tab-supermarket', 'Supermarket OS', s.pendingPayments);
+  } catch (err) { fail(err, $('os-kpis')); }
+}
+async function loadOsPay() {
+  const st = $('os-pay-f').value;
+  try {
+    const { orders } = await AuroraAPI.get('/admin/os/orders' + (st ? '?status=' + st : ''));
+    const lab = { proof_submitted: ['Review', ''], awaiting_proof: ['No receipt', ''], confirmed: ['Confirmed', 'good'], rejected: ['Rejected', 'bad'], cancelled: ['Cancelled', 'bad'] };
+    $('os-pay-table').innerHTML = table(['Date', 'Customer', 'Business', 'Plan', 'Amount', 'Ref', 'Status'], orders.map(o => `<tr class="click" onclick="openOsOrder(${o.id})"><td>${osDay(o.createdAt)}</td><td>${osWho(o.user)}</td><td>${e(o.businessName)}</td><td>${e(o.plan)}${o.kind !== 'new' ? ' · ' + e(o.kind) : ''}</td><td>${osNaira(o.amount)}</td><td>${e(o.reference)}</td><td><span class="adm-badge ${(lab[o.status] || [])[1] || ''}">${e((lab[o.status] || [o.status])[0])}</span></td></tr>`), 'Nothing here.');
+  } catch (err) { fail(err, $('os-pay-table')); }
+}
+async function openOsOrder(id) {
+  const box = $('os-modal-box'); box.innerHTML = 'Loading…'; $('os-modal').classList.add('open');
+  try {
+    const { order: o } = await AuroraAPI.get('/admin/os/orders/' + id);
+    const open = ['awaiting_proof', 'proof_submitted', 'rejected'].includes(o.status);
+    box.innerHTML = `<h3 style="margin:0 0 4px">${e(o.business_name)}</h3><p class="adm-info" style="margin:0 0 10px">${e(o.user.name || '')} · ${e(o.user.email || '')} · ${e(o.user.phone || '')}</p>
+      <p style="margin:0 0 10px"><b>${osNaira(o.amount)}</b> · ${e(o.plan)} · ${e(o.kind)} · ref <b>${e(o.reference)}</b><br>Status: ${e(o.status)}${o.reject_reason ? ' — ' + e(o.reject_reason) : ''}${o.period_end ? '<br>Licence until ' + osDay(o.period_end) : ''}</p>
+      ${o.proofUrl ? `<a href="${e(o.proofUrl)}" target="_blank" rel="noopener"><img src="${e(o.proofUrl)}" alt="receipt" style="max-width:100%;max-height:340px;border-radius:10px;border:1px solid var(--glass-border)"></a><p class="adm-info">Check the amount <b>and</b> the reference in your bank app before confirming.</p>` : '<p class="adm-info">No receipt uploaded yet.</p>'}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${open ? `<button class="adm-head-btn" style="margin-left:0" onclick="osConfirm(${o.id})">✓ Money received — confirm</button><button class="adm-head-btn" style="margin-left:0" onclick="osReject(${o.id})">Reject</button>` : ''}<button class="adm-head-btn" style="margin-left:0" onclick="$('os-modal').classList.remove('open')">Close</button></div>`;
+  } catch (err) { box.innerHTML = e(err.message); }
+}
+async function osConfirm(id) {
+  if (!confirm('Confirm that the money is in your account? This issues the licence.')) return;
+  try { await AuroraAPI.post('/admin/os/orders/' + id + '/confirm'); $('os-modal').classList.remove('open'); showToast('Confirmed — licence issued'); loadOsPay(); loadOsStats(); } catch (err) { showToast(err.message, 'error'); }
+}
+async function osReject(id) {
+  const reason = prompt('Why? (the customer will see this)'); if (!reason) return;
+  try { await AuroraAPI.post('/admin/os/orders/' + id + '/reject', { reason }); $('os-modal').classList.remove('open'); showToast('Customer told'); loadOsPay(); loadOsStats(); } catch (err) { showToast(err.message, 'error'); }
+}
+async function loadOsLic() {
+  const f = $('os-lic-f').value;
+  try {
+    const { licenses } = await AuroraAPI.get('/admin/os/licenses' + (f ? '?filter=' + f : ''));
+    const cls = { active: 'good', expiring: '', expired: 'bad', revoked: 'bad' };
+    $('os-lic-table').innerHTML = table(['Business', 'Owner', 'Plan', 'Ends', 'Days left', 'State', ''], licenses.map(l => `<tr><td>${e(l.businessName)}</td><td>${osWho(l.user)}</td><td>${e(l.plan)}</td><td>${osDay(l.expiresAt)}</td><td>${l.state === 'expired' ? '—' : l.daysLeft}</td><td><span class="adm-badge ${cls[l.state]}">${e(l.state)}</span></td>
+      <td style="white-space:nowrap"><button class="adm-chip" onclick="osExtend('${e(l.userId)}')">+ days</button> ${l.state === 'revoked' ? `<button class="adm-chip" onclick="osRevoke('${e(l.userId)}',false)">Restore</button>` : `<button class="adm-chip" onclick="osRevoke('${e(l.userId)}',true)">Suspend</button>`}</td></tr>`), 'No subscribers yet.');
+  } catch (err) { fail(err, $('os-lic-table')); }
+}
+async function osExtend(uid) {
+  const days = Number(prompt('Add how many days? (1–366)', '30')); if (!days) return;
+  try { await AuroraAPI.post('/admin/os/licenses/' + uid + '/extend', { days }); showToast('Extended'); loadOsLic(); loadOsStats(); } catch (err) { showToast(err.message, 'error'); }
+}
+async function osRevoke(uid, on) {
+  if (!confirm(on ? 'Suspend this subscriber? They can no longer renew or download. A key already on their computer works until its end date.' : 'Restore this subscriber?')) return;
+  try { await AuroraAPI.post('/admin/os/licenses/' + uid + (on ? '/revoke' : '/restore')); loadOsLic(); loadOsStats(); } catch (err) { showToast(err.message, 'error'); }
+}
+async function loadOsSettings() {
+  try {
+    const { settings: s, signingReady } = await AuroraAPI.get('/admin/os/settings');
+    $('os-sign').innerHTML = signingReady ? '🔑 Licence signing key: <b style="color:var(--aurora-teal)">ready</b>' : '⚠️ Licence signing key is <b style="color:var(--aurora-pink)">not set</b> — add OS_LICENSE_PRIVATE_KEY in Vercel and redeploy, or confirming payments will fail.';
+    $('os-s-monthly').value = s.monthly_price; $('os-s-yearly').value = s.yearly_price; $('os-s-bank').value = s.bank_name || ''; $('os-s-num').value = s.account_number || '';
+    $('os-s-name').value = s.account_name || ''; $('os-s-url').value = s.download_url || ''; $('os-s-ver').value = s.app_version || ''; $('os-s-on').checked = !!s.enabled;
+  } catch (err) { fail(err, $('os-sign')); }
+}
+async function saveOsSettings() {
+  try {
+    await AuroraAPI.request('/admin/os/settings', { method: 'PUT', body: { monthly_price: $('os-s-monthly').value, yearly_price: $('os-s-yearly').value, bank_name: $('os-s-bank').value, account_number: $('os-s-num').value,
+      account_name: $('os-s-name').value, download_url: $('os-s-url').value, app_version: $('os-s-ver').value, enabled: $('os-s-on').checked } });
+    $('os-s-msg').textContent = 'Saved ✓';
+  } catch (err) { $('os-s-msg').textContent = err.message; }
+}
+async function grantOs() {
+  try {
+    await AuroraAPI.post('/admin/os/grant', { email: $('os-g-email').value, businessName: $('os-g-biz').value, plan: $('os-g-plan').value, months: Number($('os-g-months').value) });
+    $('os-g-msg').textContent = 'Licence given ✓'; loadOsStats();
+  } catch (err) { $('os-g-msg').textContent = err.message; }
+}
+function loadSupermarket() { loadOsStats(); osSub('pay'); }
+
 // ---------- tabs ----------
 function showTab(t) {
   tab = t;
@@ -221,6 +345,7 @@ function showTab(t) {
   if (t === 'users') loadUsers();
   if (t === 'support') loadTickets();
   if (t === 'pricing') loadPricing();
+  if (t === 'supermarket') loadSupermarket();
 }
 
 // ---------- overview ----------
@@ -501,7 +626,7 @@ async function init() {
   $('adm-app').style.display = '';
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeOrder(); });
   const h = (location.hash || '').slice(1);
-  showTab(['overview', 'orders', 'disputes', 'shops', 'users', 'support', 'pricing'].includes(h) ? h : 'overview');
+  showTab(['overview', 'orders', 'disputes', 'shops', 'users', 'support', 'pricing', 'supermarket'].includes(h) ? h : 'overview');
   listTimer = setInterval(() => { if (tab === 'support') loadTickets(); else if (tab === 'overview') loadOverview(); }, 20000);
 }
 init();

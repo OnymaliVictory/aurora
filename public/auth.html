@@ -97,6 +97,11 @@
 <script src="js/aurora-bg.js"></script>
 <script>
 let selectedRole = 'buyer';
+const _q = new URLSearchParams(location.search);
+// Remembered in sessionStorage so it survives the Google round-trip. Whitelist only: never redirect to arbitrary URLs.
+try { if (_q.get('next') === 'supermarket') sessionStorage.setItem('aurora_next', 'supermarket'); } catch {}
+let NEXT = null; try { if (sessionStorage.getItem('aurora_next') === 'supermarket') NEXT = 'supermarket.html'; } catch {}
+if (_q.get('role') === 'seller') setTimeout(() => { try { selectRole('seller'); } catch {} }, 0);
 function switchTab(tab, el) {
   document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
@@ -155,7 +160,7 @@ async function handleForgot(e, mode) {
 // the client library picks it up; we just send them to their dashboard.
 supabaseClient.auth.onAuthStateChange(async (event) => {
   if (event === 'SIGNED_IN' && /[#&]access_token=/.test(location.hash)) {
-    try { const user = await AuroraAuth.refresh(); location.replace(user && user.role === 'seller' ? 'seller.html' : 'buyer.html'); } catch {}
+    try { const user = await AuroraAuth.refresh(); location.replace(NEXT || (user && user.role === 'seller' ? 'seller.html' : 'buyer.html')); } catch {}
   }
 });
 async function googleSignIn() {
@@ -179,7 +184,7 @@ async function handleLogin(e) {
     if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Incorrect email or password.' : error.message);
     const user = await AuroraAuth.refresh();
     showToast('✦ Welcome back to Aurora!');
-    setTimeout(() => { window.location.href = user.role === 'seller' ? 'seller.html' : 'buyer.html'; }, 500);
+    setTimeout(() => { window.location.href = NEXT || (user.role === 'seller' ? 'seller.html' : 'buyer.html'); }, 500);
   } catch (err) {
     showAuthError('login-error', err.message);
     btn.disabled = false; btn.textContent = 'Sign In to Aurora';
@@ -217,7 +222,7 @@ async function handleRegister(e) {
 
     const user = await AuroraAuth.refresh();
     showToast('✨ Account created! Welcome to Aurora.');
-    setTimeout(() => { window.location.href = user.role === 'seller' ? 'create-shop.html' : 'buyer.html'; }, 500);
+    setTimeout(() => { window.location.href = NEXT || (user.role === 'seller' ? 'create-shop.html' : 'buyer.html'); }, 500);
   } catch (err) {
     showAuthError('register-error', err.message);
     btn.disabled = false; btn.textContent = 'Create My Account →';
@@ -225,7 +230,7 @@ async function handleRegister(e) {
 }
 (async () => {
   const user = await AuroraAuth.refresh();
-  if (user) window.location.href = user.role === 'seller' ? 'seller.html' : 'buyer.html';
+  if (user) window.location.href = NEXT || (user.role === 'seller' ? 'seller.html' : 'buyer.html');
 })();
 </script>
 </body></html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>(function(){try{var t=localStorage.getItem("aurora_theme_v2")||"light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.background = t==="light" ? "#f6f7fb" : "#02050f";document.documentElement.style.colorScheme = t==="light" ? "light" : "dark";}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aurora OS — Supermarket software for sellers</title>
+<meta name="description" content="Aurora OS is a fast, offline till and stock system for supermarkets. Monthly or yearly subscription.">
+<link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/aurora-app.css" id="aurora-app-css"><script>(function(){var l=document.getElementById("aurora-app-css");if(l)l.disabled=document.documentElement.getAttribute("data-theme")!=="light"})()</script><link rel="stylesheet" href="css/aurora-shared.css">
+</head>
+<body>
+<canvas id="aurora-canvas"></canvas>
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">✦ AURORA</a>
+  <div class="nav-links" id="nav-links">
+    <a href="index.html" class="nav-link">Marketplace</a>
+    <a href="seller.html" class="nav-link" id="nav-seller" style="display:none">My Shop</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">☀️</button>
+  <button class="hamburger" id="hamburger-btn" onclick="toggleMobileNav()"><span></span><span></span><span></span></button>
+</nav>
+<style>
+.sm{max-width:960px;margin:0 auto;padding:96px 16px 120px;position:relative;z-index:1}
+.sm h1{font-size:clamp(28px,5vw,42px);line-height:1.15;margin:0 0 10px}.sm .lead{font-size:16px;color:var(--text-muted);line-height:1.65;max-width:620px;margin:0 0 22px}
+.sm h2{font-size:20px;margin:38px 0 14px}
+.sm-hero{padding:8px 0 4px}.sm-btns{display:flex;gap:10px;flex-wrap:wrap}
+.sm-btn2{display:inline-block;font-weight:600;font-size:13.5px;padding:10px 22px;border-radius:50px;border:1px solid rgba(128,128,128,.45);background:transparent;color:inherit;text-decoration:none;cursor:pointer}
+.sm-feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.sm-feat{padding:16px}.sm-feat b{display:block;margin-bottom:4px;font-size:14.5px}.sm-feat span{font-size:13px;color:var(--text-muted);line-height:1.55}
+.sm-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.sm-plan{padding:22px;position:relative}.sm-plan.best{border:1.5px solid var(--aurora-teal)}
+.sm-tag{position:absolute;top:-11px;right:16px;background:var(--aurora-teal);color:#fff;font-size:11.5px;font-weight:700;padding:3px 11px;border-radius:999px}
+.sm-price{font-size:34px;font-weight:800;margin:6px 0 2px}.sm-price small{font-size:14px;font-weight:500;color:var(--text-dim)}
+.sm-plan ul{list-style:none;margin:12px 0 16px;padding:0;font-size:13.5px;line-height:1.9;color:var(--text-muted)}.sm-plan li:before{content:"✓ ";color:var(--aurora-teal);font-weight:700}
+.sm-plan .btn-primary{width:100%}
+.sm-card{padding:20px;margin-bottom:16px}
+.sm-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.sm-pill{font-size:11.5px;padding:4px 11px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.sm-pill.ok{color:#16a34a}.sm-pill.warn{color:#a16207}.sm-pill.bad{color:#dc2626}.sm-pill.info{color:#2563eb}
+.sm-bar{height:9px;border-radius:99px;background:rgba(128,128,128,.22);overflow:hidden;margin:12px 0 6px}.sm-bar i{display:block;height:100%;background:var(--aurora-teal);border-radius:99px}
+.sm-bar.warn i{background:#d97706}.sm-bar.bad i{background:#dc2626}
+.sm-key{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;word-break:break-all;background:rgba(128,128,128,.1);border:1px solid rgba(128,128,128,.28);border-radius:10px;padding:10px 12px;max-height:84px;overflow:auto;margin:8px 0}
+.sm-banner{padding:12px 14px;border-radius:10px;font-size:13.5px;line-height:1.55;margin-bottom:14px}
+.sm-banner.warn{background:rgba(217,119,6,.13);color:#b45309}.sm-banner.bad{background:rgba(220,38,38,.1);color:#dc2626}.sm-banner.info{background:rgba(37,99,235,.1);color:#2563eb}
+.sm-steps{padding-left:18px;font-size:13.5px;line-height:1.8;color:var(--text-muted)}
+.sm-field{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(128,128,128,.28);margin-bottom:8px;background:rgba(128,128,128,.06)}
+.sm-field small{display:block;font-size:11px;color:var(--text-dim)}.sm-field b{font-size:15px;word-break:break-all}.sm-field .big{font-size:22px}
+.sm-copy{font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid rgba(128,128,128,.4);background:transparent;color:inherit;cursor:pointer;flex:0 0 auto}
+.sm-in{width:100%;box-sizing:border-box;padding:11px 13px;border-radius:10px;border:1px solid rgba(128,128,128,.4);background:rgba(128,128,128,.08);color:inherit;font-size:14px;margin:6px 0 12px}
+.sm-drop{display:block;border:2px dashed rgba(128,128,128,.4);border-radius:12px;padding:18px;text-align:center;cursor:pointer;font-size:13.5px;color:var(--text-muted)}
+.sm-hist{width:100%;border-collapse:collapse;font-size:13px}.sm-hist td,.sm-hist th{padding:8px 6px;text-align:left;border-bottom:1px solid rgba(128,128,128,.2)}.sm-hist th{font-size:11.5px;color:var(--text-dim);font-weight:600}
+.sm-note{font-size:12.5px;color:var(--text-dim);line-height:1.6}
+.sm-hide{display:none!important}
+</style>
+
+<div class="sm">
+  <section class="sm-hero">
+    <h1>Run your supermarket<br>with <span style="color:var(--aurora-teal)">Aurora OS</span></h1>
+    <p class="lead">A fast till, stock control with expiry tracking, supplier purchases, staff roles and daily reports — on your own Windows computer. It keeps working when the internet or power-grid fails, and your data stays with you.</p>
+    <div class="sm-btns" id="hero-btns"><button class="btn-primary" onclick="location.hash='plans';document.getElementById('plans').scrollIntoView({behavior:'smooth'})">See prices</button></div>
+  </section>
+
+  <div id="mine"></div>
+
+  <h2>What you get</h2>
+  <div class="sm-feats">
+    <div class="glass-card sm-feat"><b>⚡ Fast checkout</b><span>Barcode, search and quick tiles. Hold bills, split payments, print receipts.</span></div>
+    <div class="glass-card sm-feat"><b>📦 Stock that tells the truth</b><span>Batches with expiry dates, low-stock alerts, stock-takes and a full movement history.</span></div>
+    <div class="glass-card sm-feat"><b>👥 Staff and safety</b><span>Owner, manager and cashier roles. Refunds need a manager PIN. Every action is logged.</span></div>
+    <div class="glass-card sm-feat"><b>📊 Reports</b><span>Daily sales, profit, best sellers, expenses and CSV export for your accountant.</span></div>
+    <div class="glass-card sm-feat"><b>🔌 Works offline</b><span>No internet needed to sell. Automatic backups protect your data.</span></div>
+    <div class="glass-card sm-feat"><b>🔔 No surprises</b><span>We remind you every day in the last week before your subscription ends.</span></div>
+  </div>
+
+  <h2 id="plans">Choose a plan</h2>
+  <div class="sm-plans" id="plan-cards"><div class="glass-card sm-plan" style="color:var(--text-dim)">Loading prices…</div></div>
+  <p class="sm-note" style="margin-top:12px">If a subscription ends, Aurora OS pauses (your data stays safe and you can still export it). Renew and enter the new key to continue exactly where you stopped. Renewing early adds time on top of what you have left.</p>
+</div>
+
+<div id="buy-modal" class="modal-overlay" style="display:none"><div class="modal" style="max-width:520px;max-height:90vh;overflow:auto"><div id="buy-body"></div></div></div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aurora-bg.js"></script>
+<script>
+const naira = n => '₦' + Math.round(Number(n) || 0).toLocaleString('en-NG');
+const E = s => escapeHtml(s == null ? '' : String(s));
+const dFmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+let ME = null, PLANS = null, USER = null, picked = null, timer = null;
+
+function copy(text, btn){
+  const done = () => { const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => btn.textContent = o, 1400); };
+  const fb = () => { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch {} t.remove(); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fb); else fb();
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-copy]'); if (b) copy(b.dataset.copy, b); });
+
+// ---------- plans ----------
+function renderPlans(){
+  const p = PLANS; const box = document.getElementById('plan-cards');
+  if (!p || !p.enabled) { box.innerHTML = '<div class="glass-card sm-plan">Sales are paused for now. Please check back soon.</div>'; return; }
+  const list = ['Everything in Aurora OS', 'Automatic backups', 'Updates included', 'Reminders before it ends'];
+  box.innerHTML = `
+   <div class="glass-card sm-plan"><b>Monthly</b><div class="sm-price">${naira(p.monthly)} <small>/ month</small></div>
+     <ul>${list.map(x => '<li>' + x + '</li>').join('')}<li>Pay month by month</li></ul>
+     <button class="btn-primary" onclick="startBuy('monthly')">Choose monthly</button></div>
+   <div class="glass-card sm-plan best">${p.yearlySavingPercent > 0 ? `<span class="sm-tag">Save ${p.yearlySavingPercent}%</span>` : ''}<b>Yearly</b><div class="sm-price">${naira(p.yearly)} <small>/ year</small></div>
+     <ul>${list.map(x => '<li>' + x + '</li>').join('')}<li>12 months, one payment</li></ul>
+     <button class="btn-primary" onclick="startBuy('yearly')">Choose yearly</button></div>`;
+}
+
+// ---------- my subscription ----------
+function renderMine(){
+  const host = document.getElementById('mine');
+  if (!USER) { host.innerHTML = ''; return; }
+  const l = ME && ME.license; let h = '';
+  const open = ME && ME.orders.find(o => ['awaiting_proof', 'proof_submitted'].includes(o.status));
+  if (open) h += pendingCard(open);
+  if (l) {
+    const total = l.plan === 'yearly' ? 365 : 30;
+    const pct = l.state === 'expired' ? 0 : Math.max(3, Math.min(100, Math.round(l.daysLeft / total * 100)));
+    const pillCls = { active: 'ok', expiring: 'warn', expired: 'bad', revoked: 'bad' }[l.state];
+    const pillTxt = { active: 'Active', expiring: 'Ending soon', expired: 'Paused — expired', revoked: 'Suspended' }[l.state];
+    const dayTxt = l.state === 'expired' ? `Ended ${-l.daysLeft} day${l.daysLeft === -1 ? '' : 's'} ago` : l.daysLeft === 0 ? 'Last day — ends tonight' : `${l.daysLeft} day${l.daysLeft === 1 ? '' : 's'} left`;
+    const banner = l.state === 'expiring' ? `<div class="sm-banner warn"><b>${l.daysLeft === 0 ? 'Your subscription ends today.' : 'Your subscription ends in ' + l.daysLeft + ' day' + (l.daysLeft === 1 ? '' : 's') + '.'}</b> Renew now so your till never stops — the days you have left are kept.</div>`
+      : l.state === 'expired' ? '<div class="sm-banner bad"><b>Aurora OS is paused.</b> Your data is safe. Renew and enter the new key in the app to carry on.</div>'
+      : l.state === 'revoked' ? '<div class="sm-banner bad">This subscription was suspended. Please contact Aurora support.</div>' : '';
+    h += `<h2>My subscription</h2><div class="glass-card sm-card">${banner}
+      <div class="sm-row"><div><div style="font-weight:700;font-size:16px">${E(l.businessName)}</div><div class="sm-note">${l.plan === 'yearly' ? 'Yearly' : 'Monthly'} plan · ends ${dFmt(l.expiresAt)}</div></div><span class="sm-pill ${pillCls}">${pillTxt}</span></div>
+      <div class="sm-bar ${l.state === 'expiring' ? 'warn' : l.state === 'expired' ? 'bad' : ''}"><i style="width:${pct}%"></i></div><div class="sm-note"><b>${dayTxt}</b></div>
+      ${l.key ? `<div style="margin-top:14px;font-weight:600;font-size:14px">Your licence key</div><div class="sm-key" id="lic-key">${E(l.key)}</div>
+        <div class="sm-btns"><button class="sm-copy" data-copy="${E(l.key)}">Copy key</button><button class="sm-copy" onclick="saveKey()">Save as file</button></div>
+        <ol class="sm-steps" style="margin-top:12px"><li>${ME.canDownload ? 'Download and install Aurora OS (button below).' : 'Install Aurora OS when the download is ready.'}</li><li>Open it, go to <b>Subscription</b> and paste this key (or choose the saved file).</li><li>When you renew, paste the <b>new</b> key the same way.</li></ol>` : ''}
+      <div class="sm-btns" style="margin-top:14px">
+        ${ME.canDownload ? '<button class="btn-primary" onclick="download()">⬇ Download Aurora OS</button>' : ''}
+        ${l.state !== 'revoked' ? `<button class="${l.state === 'active' ? 'sm-btn2' : 'btn-primary'}" onclick="startBuy('${l.plan}', true)">Renew subscription</button>` : ''}
+      </div></div>`;
+  }
+  const done = ME.orders.filter(o => !['awaiting_proof', 'proof_submitted'].includes(o.status));
+  if (done.length) h += `<h2>Payments</h2><div class="glass-card sm-card" style="overflow-x:auto"><table class="sm-hist"><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Reference</th><th>Status</th></tr>${done.map(o =>
+    `<tr><td>${dFmt(o.createdAt)}</td><td>${o.plan}${o.kind === 'renewal' ? ' (renewal)' : ''}</td><td>${naira(o.amount)}</td><td>${E(o.reference)}</td><td>${{ confirmed: '✓ Paid', rejected: 'Not confirmed' + (o.rejectReason ? ' — ' + E(o.rejectReason) : ''), cancelled: 'Cancelled' }[o.status] || o.status}</td></tr>`).join('')}</table></div>`;
+  host.innerHTML = h;
+}
+function pendingCard(o){
+  const sent = o.status === 'proof_submitted';
+  return `<h2>Payment in progress</h2><div class="glass-card sm-card"><div class="sm-row"><div><b>${E(o.businessName)}</b><div class="sm-note">${o.plan} · ${naira(o.amount)} · ref ${E(o.reference)}</div></div>
+    <span class="sm-pill ${sent ? 'info' : 'warn'}">${sent ? 'Receipt sent — waiting for Aurora' : 'Waiting for your transfer'}</span></div>
+    ${o.rejectReason && !sent ? `<div class="sm-banner bad" style="margin-top:12px"><b>Not confirmed:</b> ${E(o.rejectReason)}. Upload a new receipt.</div>` : ''}
+    <div class="sm-btns" style="margin-top:12px"><button class="btn-primary" onclick="openOrder(${o.id})">${sent ? 'View' : 'Pay & upload receipt'}</button>${sent ? '' : `<button class="sm-btn2" onclick="cancelOrder(${o.id})">Cancel</button>`}</div></div>`;
+}
+function saveKey(){
+  const k = ME.license.key; const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([k], { type: 'text/plain' })); a.download = 'aurora.license'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function download(){ try { const r = await AuroraAPI.get('/os/download'); window.open(r.url, '_blank', 'noopener'); } catch (e) { showToast(e.message, 'error'); } }
+
+// ---------- buying ----------
+function closeBuy(){ document.getElementById('buy-modal').style.display = 'none'; picked = null; }
+function showModal(html){ document.getElementById('buy-body').innerHTML = html; document.getElementById('buy-modal').style.display = 'flex'; }
+async function startBuy(plan, renew){
+  if (!USER) { location.href = 'auth.html?next=supermarket&role=seller'; return; }
+  if (!['seller', 'admin'].includes(USER.role)) { showToast('Aurora OS is for sellers. Create a seller account first.', 'error'); setTimeout(() => location.href = 'auth.html?next=supermarket&role=seller', 1400); return; }
+  const open = ME.orders.find(o => ['awaiting_proof', 'proof_submitted'].includes(o.status));
+  if (open) return openOrder(open.id);
+  const price = plan === 'yearly' ? PLANS.yearly : PLANS.monthly;
+  const bizDefault = (ME.license && ME.license.businessName) || '';
+  showModal(`<h3 style="margin:0 0 4px">${renew ? 'Renew' : 'Subscribe to'} Aurora OS</h3><p class="sm-note" style="margin:0 0 12px">Step 1 of 2 — tell us about your business.</p>
+    <label class="sm-note">Plan</label><select class="sm-in" id="b-plan" onchange="document.getElementById('b-amt').textContent=this.value==='yearly'?'${naira(PLANS.yearly)}':'${naira(PLANS.monthly)}'">
+      <option value="monthly" ${plan === 'monthly' ? 'selected' : ''}>Monthly — ${naira(PLANS.monthly)}</option><option value="yearly" ${plan === 'yearly' ? 'selected' : ''}>Yearly — ${naira(PLANS.yearly)}</option></select>
+    <label class="sm-note">Supermarket / business name</label><input class="sm-in" id="b-biz" maxlength="80" value="${E(bizDefault)}" placeholder="e.g. Mama Ngozi Supermarket">
+    <div class="sm-field"><div><small>You will pay</small><b class="big" id="b-amt">${naira(price)}</b></div></div>
+    <div class="sm-btns" style="margin-top:14px"><button class="btn-primary" id="b-go" onclick="createOrder()">Continue to payment</button><button class="sm-btn2" onclick="closeBuy()">Close</button></div>`);
+}
+async function createOrder(){
+  const btn = document.getElementById('b-go'); btn.disabled = true;
+  try {
+    const { order } = await AuroraAPI.post('/os/orders', { plan: document.getElementById('b-plan').value, businessName: document.getElementById('b-biz').value });
+    await load(); openOrder(order.id);
+  } catch (e) { showToast(e.message, 'error'); btn.disabled = false; }
+}
+function openOrder(id){
+  const o = ME.orders.find(x => x.id === id); if (!o) return;
+  const a = o.account; const sent = o.status === 'proof_submitted';
+  const f = (label, v, big) => `<div class="sm-field"><div style="min-width:0"><small>${label}</small><b class="${big ? 'big' : ''}">${E(v)}</b></div><button class="sm-copy" data-copy="${E(v)}">Copy</button></div>`;
+  showModal(`<h3 style="margin:0 0 4px">Pay by bank transfer</h3><p class="sm-note" style="margin:0 0 12px">Step 2 of 2 — send the exact amount, then upload your receipt. Aurora confirms it (usually within a few hours) and your key appears on this page.</p>
+    ${o.rejectReason && !sent ? `<div class="sm-banner bad"><b>Not confirmed:</b> ${E(o.rejectReason)}</div>` : ''}
+    ${a ? f('Bank', a.bankName) + f('Account number', a.accountNumber, true) + f('Account name', a.accountName) : ''}
+    ${f('Amount', Math.round(o.amount), true).replace('>' + Math.round(o.amount) + '<', '>' + naira(o.amount) + '<')}
+    ${f('Put this in the transfer narration / remark', o.reference, true)}
+    <p class="sm-note">Use the reference so we can match your payment quickly.</p>
+    <label class="sm-drop" id="dz">${sent ? 'Receipt sent ✓ — tap to replace it' : '📷 Tap to choose your payment receipt (screenshot)'}<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="pick(this)"></label>
+    <div class="sm-note" style="margin-top:6px">JPG, PNG or WEBP · max 4 MB</div>
+    <div class="sm-btns" style="margin-top:14px"><button class="btn-primary" id="send" disabled onclick="sendProof(${o.id})">Send receipt</button><button class="sm-btn2" onclick="closeBuy()">Close</button></div>`);
+}
+function pick(input){
+  const f = input.files && input.files[0]; if (!f) return;
+  if (f.size > 4 * 1024 * 1024) { showToast('That image is over 4 MB. Use a screenshot.', 'error'); input.value = ''; return; }
+  picked = f; document.getElementById('dz').firstChild.textContent = '📷 ' + f.name + ' — tap to change'; document.getElementById('send').disabled = false;
+}
+async function sendProof(id){
+  if (!picked) return; const btn = document.getElementById('send'); btn.disabled = true; btn.textContent = 'Sending…';
+  try { const fd = new FormData(); fd.append('proof', picked, picked.name); await AuroraAPI.request('/os/orders/' + id + '/proof', { method: 'POST', body: fd });
+    closeBuy(); await load(); showToast('✓ Receipt sent. We will confirm shortly.'); window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) { showToast(e.message, 'error'); btn.disabled = false; btn.textContent = 'Send receipt'; }
+}
+async function cancelOrder(id){
+  if (!confirm('Cancel this payment?')) return;
+  try { await AuroraAPI.post('/os/orders/' + id + '/cancel'); await load(); } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ---------- boot ----------
+async function load(){
+  if (USER) { try { ME = await AuroraAPI.get('/os/me'); PLANS = ME.plans; } catch (e) { showToast(e.message, 'error'); } }
+  if (!PLANS) { try { PLANS = await AuroraAPI.get('/os/plans'); } catch {} }
+  if (!ME) ME = { orders: [], license: null };
+  renderPlans(); renderMine();
+  const need = ME.orders.some(o => o.status === 'proof_submitted');
+  if (need && !timer) timer = setInterval(() => { if (document.getElementById('buy-modal').style.display === 'none') load(); }, 30000);
+  if (!need && timer) { clearInterval(timer); timer = null; }
+}
+(async function init(){
+  try { sessionStorage.removeItem('aurora_next'); } catch {}
+  USER = await AuroraAuth.refresh();
+  const hb = document.getElementById('hero-btns');
+  if (!USER) hb.innerHTML += ' <a class="sm-btn2" href="auth.html?next=supermarket&role=seller">Sign in / Create seller account</a>';
+  else if (['seller', 'admin'].includes(USER.role)) document.getElementById('nav-seller').style.display = '';
+  else hb.innerHTML += ' <a class="sm-btn2" href="auth.html?next=supermarket&role=seller">Create a seller account</a>';
+  await load();
+})();
+</script>
+</body></html>

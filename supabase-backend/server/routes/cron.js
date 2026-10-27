@@ -156,7 +156,9 @@ router.get('/daily-nudges', requireCronSecret, async (req, res) => {
   try {
     const carts = await remindCarts(deadline);
     const digests = await sendDigests(deadline);
-    res.json({ carts, digests });
+    let os = null;
+    try { os = await require('../osCore').sendReminders(deadline); } catch (e) { console.error('os reminders', e.message); }
+    res.json({ carts, digests, os });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

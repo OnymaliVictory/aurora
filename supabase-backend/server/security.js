@@ -25,7 +25,7 @@ const RESERVED_SLUGS = new Set([
   'reset-password','login','logout','register','signup','signin','terms','privacy','transfer','transfers','receipt','refund',
   'help','support','about','contact','shop','shops','products','product','orders','order',
   'cart','account','profile','static','public','css','js','assets','images','img','sw',
-  'www','mail','app','dashboard','aurora','root','status','blog','docs','null','undefined',
+  'www','mail','app','dashboard','aurora','root','status','blog','docs','null','undefined','supermarket','os',
 ]);
 function safeSlug(name) {
   let s = String(name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '')

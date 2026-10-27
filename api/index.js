@@ -17,6 +17,8 @@ const transferRoutes = require('../supabase-backend/server/routes/transfers');
 const cronRoutes = require('../supabase-backend/server/routes/cron');
 const trackRoutes = require('../supabase-backend/server/routes/track');
 const adminRoutes = require('../supabase-backend/server/routes/admin');
+const osRoutes = require('../supabase-backend/server/routes/os');
+const osAdminRoutes = require('../supabase-backend/server/routes/osAdmin');
 const notificationRoutes = require('../supabase-backend/server/routes/notifications');
 
 const { maskServerErrors, errorHandler, rateLimit } = require('../supabase-backend/server/security');
@@ -45,6 +47,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/transfers', transferRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/track', trackRoutes);
+app.use('/api/os', osRoutes);
+app.use('/api/admin/os', osAdminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 
